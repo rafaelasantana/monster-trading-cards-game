@@ -25,6 +25,10 @@ namespace mtcg
                 {
                     HandleUserRegistration();
                 }
+                else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/sessions")
+                {
+                    HandleUserLogin();
+                }
                 else
                 {
                     // Default response
@@ -52,8 +56,8 @@ namespace mtcg
                 string json = reader.ReadToEnd();
                 User newUser = ParseUserFromJson(json);
 
-                // check if username is taken
-                if (userRepository.UserExists(newUser.Username))
+                // check if username is already taken
+                if (userRepository.GetByUsername(newUser.Username) != null)
                 {
                     string errorResponse = "Username already exists!";
                     // send error response
@@ -61,10 +65,6 @@ namespace mtcg
                 }
                 else
                 {
-                    // hash password
-                    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(newUser.Password);
-                    // set hashed password
-                    newUser.Password = hashedPassword;
                     // save new user
                     userRepository.Save(newUser);
 
@@ -80,6 +80,32 @@ namespace mtcg
                 string errorResponse = $"Error: {e.Message}";
                 // send error response
                 SendResponse(errorResponse, HttpStatusCode.InternalServerError);
+            }
+        }
+
+        /// <summary>
+        /// logs a registered user in, or sends an error response
+        /// </summary>
+        private void HandleUserLogin() {
+            using var reader = new StreamReader(context.Request.InputStream);
+            string json = reader.ReadToEnd();
+            User loginUser = ParseUserFromJson(json);
+
+            // get user's data from the database
+            User registeredUser = userRepository.GetByUsername(loginUser.Username);
+
+            // check if user exists and password matches
+            if (registeredUser != null && BCrypt.Net.BCrypt.Verify(loginUser.Password, registeredUser.Password))
+            {
+                string successResponse = "Login successful!";
+                // send success response
+                SendResponse(successResponse, HttpStatusCode.OK);
+            }
+            else
+            {
+                string errorResponse = "Invalid username or password.";
+                // send error response
+                SendResponse(errorResponse, HttpStatusCode.Unauthorized);
             }
         }
 

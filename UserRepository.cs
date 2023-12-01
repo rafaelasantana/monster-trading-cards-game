@@ -23,6 +23,10 @@ namespace mtcg
             // check if user is not yet saved to the database
             if (user.Id == 0)
             {
+                // hash password
+                string hashedPassword = BCrypt.Net.BCrypt.HashPassword(user.Password);
+                // set hashed password
+                user.Password = hashedPassword;
                 // insert new record and return the generated Id
                 int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_Table} ({_Fields}) VALUES (@Username, @Password) RETURNING Id", user);
                 if (generatedId > 0)
@@ -43,21 +47,23 @@ namespace mtcg
         }
 
         /// <summary>
-        /// Checks if the username already exists on the database
+        /// Returns the user with this username or null
         /// </summary>
         /// <param name="username"></param>
         /// <returns></returns>
-        public bool UserExists(string username)
+        public User GetByUsername(string username)
         {
             // open connection
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            // build query to check if username exists
-            string query = $"SELECT COUNT(*) FROM {_Table} WHERE username = @Username";
-            var count = connection.ExecuteScalar<int>(query, new { Username = username });
+            // build query
+            string query = $"SELECT {_Fields} FROM {_Table} WHERE username = @Username";
 
-            return count > 0;
+            // execute query and retrieve result
+            var result = connection.QueryFirstOrDefault<User>(query, new { Username = username});
+
+            return result;
         }
     }
 }
