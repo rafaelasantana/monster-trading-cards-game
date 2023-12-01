@@ -3,7 +3,7 @@
 /// <summary>
 /// Repositories implement this interface
 /// </summary>
-public interface IRepositoryT<T>
+public interface IRepository<T>
 {
     /// <summary>
     /// Gets the Object by its ID

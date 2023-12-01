@@ -2,7 +2,7 @@
 
 namespace mtcg;
 
-public abstract class Repository<T> : IRepositoryT<T>
+public abstract class Repository<T> : IRepository<T>
 {
     /// <summary>
     /// Database table name
