@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "1snWRIUW9dO9wBibiTeZyCE6w8RQO3tFj9wG0Jeawfo5WZbJ0Bq1Dd9Vc5VdI9zTOvHvH7coltAHAbl9NuO6lQ==",
+  "dgSpecHash": "IhkEQcS6nzQsYz8ZaOS6cePBjd6b5NQdc8d4bTvT+g87nGM2R9SjpCRp9eRKdTxgFAhflf33lQhuKfE6vvRbkg==",
   "success": true,
   "projectFilePath": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/mtcg.csproj",
   "expectedPackageFiles": [
+    "/Users/rafaelasantana/.nuget/packages/dapper/2.1.24/dapper.2.1.24.nupkg.sha512",
     "/Users/rafaelasantana/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
     "/Users/rafaelasantana/.nuget/packages/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",
     "/Users/rafaelasantana/.nuget/packages/microsoft.codeanalysis.analyzers/3.3.3/microsoft.codeanalysis.analyzers.3.3.3.nupkg.sha512",

@@ -104,3 +104,5 @@
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.pdb
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.genruntimeconfig.cache
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/ref/mtcg.dll
+/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.sourcelink.json
+/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/Dapper.dll

@@ -2,22 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-// using Microsoft.EntityFrameworkCore;
-// using System.ComponentModel.DataAnnotations;
-
 
 
 namespace mtcg
 {
     public class User
     {
+        public int Id {get; set;}
         public string Username { get; set; }
-        public string Password { get; set; }
+        public string PasswordHash { get; set; }
 
-        public User(string username, string password)
+        public User(string username, string passwordHash)
         {
+            // initialize Id as 0 before User is saved to the database
+            Id = 0;
             Username = username ?? throw new ArgumentNullException(nameof(username));
-            Password = password ?? throw new ArgumentNullException(nameof(password));
+            PasswordHash = passwordHash ?? throw new ArgumentNullException(nameof(passwordHash));
         }
     }
 }

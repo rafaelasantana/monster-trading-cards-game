@@ -45,26 +45,24 @@ namespace mtcg
 
         private void HandleUserRegistration()
         {
-            using (var reader = new StreamReader(context.Request.InputStream))
+            using var reader = new StreamReader(context.Request.InputStream);
+            string json = reader.ReadToEnd();
+            User newUser = ParseUserFromJson(json);
+
+            if (UserExists(newUser.Username))
             {
-                string json = reader.ReadToEnd();
-                User newUser = ParseUserFromJson(json);
+                string errorResponse = "Username already exists!";
+                SendResponse(errorResponse, HttpStatusCode.BadRequest);
+            }
+            else
+            {
+                // Assuming users is a shared resource accessible from here
+                users.Add(newUser);
 
-                if (UserExists(newUser.Username))
-                {
-                    string errorResponse = "Username already exists!";
-                    SendResponse(errorResponse, HttpStatusCode.BadRequest);
-                }
-                else
-                {
-                    // Assuming users is a shared resource accessible from here
-                    users.Add(newUser);
+                PrintAllUsers();
 
-                    PrintAllUsers();
-
-                    string successResponse = "User registered successfully!";
-                    SendResponse(successResponse, HttpStatusCode.OK);
-                }
+                string successResponse = "User registered successfully!";
+                SendResponse(successResponse, HttpStatusCode.OK);
             }
         }
 
@@ -76,7 +74,7 @@ namespace mtcg
             context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
         }
 
-        private User ParseUserFromJson(string json)
+        private static User ParseUserFromJson(string json)
         {
             try
             {
@@ -91,19 +89,19 @@ namespace mtcg
         }
 
         // checks if an username exists on the database
-        private bool UserExists(string username)
+        private static bool UserExists(string username)
         {
             return users.Exists(u => u.Username == username);
         }
 
         // prints all users on the database
-        private void PrintAllUsers()
+        private static void PrintAllUsers()
         {
             Console.WriteLine("Registered Users:");
 
             foreach (var user in users)
             {
-                Console.WriteLine($"Username: {user.Username}, Password: {user.Password}");
+                Console.WriteLine($"Username: {user.Username}, Password: {user.PasswordHash}");
             }
 
             Console.WriteLine();

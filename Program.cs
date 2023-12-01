@@ -19,9 +19,13 @@ namespace mtcg
             // create database manager
             var dbConnectionManager = new DbConnectionManager(configuration);
 
-            // create HTTP server
-            HttpServer server = new HttpServer(configuration["ServerUrl"]);
+            // // create HTTP server
+            // HttpServer server = new(configuration["ServerUrl"]!);
 
+            var userRepo = new UserRepository(dbConnectionManager);
+            User newUser = new User("testUser", "testPassword");
+            userRepo.Save(newUser);
+            userRepo.Save(newUser);
         }
     }
 }
