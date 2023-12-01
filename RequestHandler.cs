@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.IO;
 using System.Net;
 using Newtonsoft.Json;
 
@@ -19,6 +14,9 @@ namespace mtcg
             userRepository = new UserRepository(dbConnectionManager);
         }
 
+        /// <summary>
+        /// Handles incoming requests
+        /// </summary>
         public void HandleRequest()
         {
             try
@@ -43,6 +41,9 @@ namespace mtcg
             context.Response.Close();
         }
 
+        /// <summary>
+        /// Registers a new user with a hashed password, or sends an error response if the user already exists
+        /// </summary>
         private void HandleUserRegistration()
         {
             try
@@ -82,6 +83,11 @@ namespace mtcg
             }
         }
 
+        /// <summary>
+        /// Sends an HTTP response
+        /// </summary>
+        /// <param name="responseString"></param>
+        /// <param name="statusCode"></param>
         private void SendResponse(string responseString, HttpStatusCode statusCode)
         {
             byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(responseString);
@@ -90,6 +96,11 @@ namespace mtcg
             context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
         }
 
+        /// <summary>
+        /// Parses an User from JSON format
+        /// </summary>
+        /// <param name="json"></param>
+        /// <returns></returns>
         private static User ParseUserFromJson(string json)
         {
             try
