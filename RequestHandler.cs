@@ -11,12 +11,12 @@ namespace mtcg
     public class RequestHandler
     {
         private readonly HttpListenerContext context;
-        // Store registered users
-        static List<User> users = new List<User>();
+        private readonly UserRepository userRepository;
 
-        public RequestHandler(HttpListenerContext context)
+        public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
         {
             this.context = context;
+            userRepository = new UserRepository(dbConnectionManager);
         }
 
         public void HandleRequest()
@@ -45,24 +45,36 @@ namespace mtcg
 
         private void HandleUserRegistration()
         {
-            using var reader = new StreamReader(context.Request.InputStream);
-            string json = reader.ReadToEnd();
-            User newUser = ParseUserFromJson(json);
-
-            if (UserExists(newUser.Username))
+            try
             {
-                string errorResponse = "Username already exists!";
-                SendResponse(errorResponse, HttpStatusCode.BadRequest);
+                using var reader = new StreamReader(context.Request.InputStream);
+                string json = reader.ReadToEnd();
+                User newUser = ParseUserFromJson(json);
+
+                // check if username is taken
+                if (userRepository.UserExists(newUser.Username))
+                {
+                    string errorResponse = "Username already exists!";
+                    // send error response
+                    SendResponse(errorResponse, HttpStatusCode.BadRequest);
+                }
+                else
+                {
+                    // save new user
+                    userRepository.Save(newUser);
+
+                    PrintAllUsers();
+
+                    string successResponse = "User registered successfully!";
+                    // send success response
+                    SendResponse(successResponse, HttpStatusCode.OK);
+                }
             }
-            else
+            catch (Exception e)
             {
-                // Assuming users is a shared resource accessible from here
-                users.Add(newUser);
-
-                PrintAllUsers();
-
-                string successResponse = "User registered successfully!";
-                SendResponse(successResponse, HttpStatusCode.OK);
+                string errorResponse = $"Error: {e.Message}";
+                // send error response
+                SendResponse(errorResponse, HttpStatusCode.InternalServerError);
             }
         }
 
@@ -88,23 +100,17 @@ namespace mtcg
             }
         }
 
-        // checks if an username exists on the database
-        private static bool UserExists(string username)
-        {
-            return users.Exists(u => u.Username == username);
-        }
-
         // prints all users on the database
-        private static void PrintAllUsers()
+        private void PrintAllUsers()
         {
             Console.WriteLine("Registered Users:");
 
+            var users = userRepository.GetAll();
+
             foreach (var user in users)
             {
-                Console.WriteLine($"Username: {user.Username}, Password: {user.PasswordHash}");
+                Console.WriteLine($"Username: {user.Username}, Password: {user.Password}");
             }
-
-            Console.WriteLine();
         }
     }
 }

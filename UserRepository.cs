@@ -7,9 +7,13 @@ namespace mtcg
         public UserRepository(DbConnectionManager dbConnectionManager) : base(dbConnectionManager)
         {
             _Table = "users";
-            _Fields = "username, password_hash";
+            _Fields = "username, password";
         }
 
+        /// <summary>
+        /// Saves a new user to the database or updates an existing user record
+        /// </summary>
+        /// <param name="user"></param>
         public new void Save(User user)
         {
             // open connection
@@ -20,7 +24,7 @@ namespace mtcg
             if (user.Id == 0)
             {
                 // insert new record and return the generated Id
-                int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_Table} ({_Fields}) VALUES (@Username, @PasswordHash) RETURNING Id", user);
+                int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_Table} ({_Fields}) VALUES (@Username, @Password) RETURNING Id", user);
                 if (generatedId > 0)
                 {
                     // save generated Id to the object
@@ -32,10 +36,23 @@ namespace mtcg
             }
             else {
                 // update record with new data
-                int rowsAffected = connection.Execute($"UPDATE {_Table} SET username = @Username, password_hash = @PasswordHash WHERE Id = @Id", user);
+                int rowsAffected = connection.Execute($"UPDATE {_Table} SET username = @Username, password = @Password WHERE Id = @Id", user);
                 if (rowsAffected > 0) Console.WriteLine($"updated user with ID: {user.Id}");
                 else Console.WriteLine("update user failed");
             }
+        }
+
+        public bool UserExists(string username)
+        {
+            // open connection
+            using var connection = _dbConnectionManager.GetConnection();
+            connection.Open();
+
+            // build query to check if username exists
+            string query = $"SELECT COUNT(*) FROM {_Table} WHERE username = @Username";
+            var count = connection.ExecuteScalar<int>(query, new { Username = username });
+
+            return count > 0;
         }
     }
 }

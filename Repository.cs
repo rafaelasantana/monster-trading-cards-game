@@ -11,7 +11,7 @@ public abstract class Repository<T> : IRepositoryT<T>
     protected string _Table = "";
 
     /// <summary>
-    /// Table fields list
+    /// Table fields list (comma-separated)
     /// </summary>
     protected string _Fields = "";
 
@@ -95,13 +95,6 @@ public abstract class Repository<T> : IRepositoryT<T>
     /// </summary>
     /// <param name="obj"></param>
     public void Save(T obj) {
-        // TODO
-        // // open connection
-        // using var connection = _dbConnectionManager.GetConnection();
-        // connection.Open();
-
-        // if (string.IsNullOrEmpty(obj.Id)) {
-
-        // }
+        // TODO implement in corresponding class
     }
 }

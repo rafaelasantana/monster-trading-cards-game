@@ -12,11 +12,13 @@ namespace mtcg
     public class HttpServer
     {
         private HttpListener listener;
+        private readonly DbConnectionManager dbConnectionManager;
 
-        public HttpServer(string prefix)
+        public HttpServer(string prefix, DbConnectionManager dbConnectionManager)
         {
             listener = new HttpListener();
             listener.Prefixes.Add(prefix);
+            this.dbConnectionManager = dbConnectionManager;
             // start server
             Start();
         }
@@ -34,7 +36,7 @@ namespace mtcg
                 // get context from the request
                 HttpListenerContext context = listener.GetContext();
                 // create a request handler
-                var requestHandler = new RequestHandler(context);
+                var requestHandler = new RequestHandler(context, dbConnectionManager);
                 // handle the request
                 requestHandler.HandleRequest();
             }
