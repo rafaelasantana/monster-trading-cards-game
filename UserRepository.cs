@@ -42,6 +42,11 @@ namespace mtcg
             }
         }
 
+        /// <summary>
+        /// Checks if the username already exists on the database
+        /// </summary>
+        /// <param name="username"></param>
+        /// <returns></returns>
         public bool UserExists(string username)
         {
             // open connection

@@ -60,6 +60,10 @@ namespace mtcg
                 }
                 else
                 {
+                    // hash password
+                    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(newUser.Password);
+                    // set hashed password
+                    newUser.Password = hashedPassword;
                     // save new user
                     userRepository.Save(newUser);
 

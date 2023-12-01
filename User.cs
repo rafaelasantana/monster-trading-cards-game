@@ -18,7 +18,7 @@ namespace mtcg
         }
         public User(string username, string password)
         {
-            // initialize Id as 0 before User is saved to the database
+            // initialize Id as 0, will be updated once user is saved to the database
             Id = 0;
             Username = username ?? throw new ArgumentNullException(nameof(username));
             Password = password ?? throw new ArgumentNullException(nameof(password));
