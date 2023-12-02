@@ -24,17 +24,20 @@ namespace mtcg
         {
             try
             {
+                using var reader = new StreamReader(context.Request.InputStream);
+                string json = reader.ReadToEnd();
+
                 if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/users")
                 {
-                    HandleUserRegistration();
+                    HandleUserRegistration(json);
                 }
                 else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/sessions")
                 {
-                    HandleUserLogin();
+                    HandleUserLogin(json);
                 }
                 else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/packages")
                 {
-                    HandlePackageCreation();
+                    HandlePackageCreation(json);
                 }
                 else
                 {
@@ -55,12 +58,10 @@ namespace mtcg
         /// <summary>
         /// Registers a new user with a hashed password, or sends an error response if the user already exists
         /// </summary>
-        private void HandleUserRegistration()
+        private void HandleUserRegistration(string json)
         {
             try
             {
-                using var reader = new StreamReader(context.Request.InputStream);
-                string json = reader.ReadToEnd();
                 User newUser = ParseUserFromJson(json);
 
                 // check if username is already taken
@@ -93,9 +94,7 @@ namespace mtcg
         /// <summary>
         /// logs a registered user in, or sends an error response
         /// </summary>
-        private void HandleUserLogin() {
-            using var reader = new StreamReader(context.Request.InputStream);
-            string json = reader.ReadToEnd();
+        private void HandleUserLogin(string json) {
             User loginUser = ParseUserFromJson(json);
 
             // get user's data from the database
@@ -116,13 +115,10 @@ namespace mtcg
             }
         }
 
-        private void HandlePackageCreation()
+        private void HandlePackageCreation(string json)
         {
             try
             {
-                using var reader = new StreamReader(context.Request.InputStream);
-                string json = reader.ReadToEnd();
-
                 List<Card> createdCards = packageCreator.CreatePackage(json);
                 // TODO save package to the database?
 
