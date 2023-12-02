@@ -1,4 +1,5 @@
 using System.Net;
+using mtcg.Controllers;
 using Newtonsoft.Json;
 
 namespace mtcg
@@ -7,11 +8,13 @@ namespace mtcg
     {
         private readonly HttpListenerContext context;
         private readonly UserRepository userRepository;
+        private readonly PackageCreator packageCreator;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
         {
             this.context = context;
             userRepository = new UserRepository(dbConnectionManager);
+            packageCreator = new PackageCreator();
         }
 
         /// <summary>
@@ -28,6 +31,10 @@ namespace mtcg
                 else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/sessions")
                 {
                     HandleUserLogin();
+                }
+                else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/packages")
+                {
+                    HandlePackageCreation();
                 }
                 else
                 {
@@ -109,6 +116,43 @@ namespace mtcg
             }
         }
 
+        private void HandlePackageCreation()
+        {
+            try
+            {
+                using var reader = new StreamReader(context.Request.InputStream);
+                string json = reader.ReadToEnd();
+
+                List<Card> createdCards = packageCreator.CreatePackage(json);
+                // TODO save package to the database?
+
+                foreach (var card in createdCards)
+                {
+                    Console.WriteLine($"Created Card - Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}, ElementType: {card.ElementType}");
+
+                    if (card is MonsterCard monsterCard)
+                    {
+                        Console.WriteLine($"Monster Type: {monsterCard.MonsterType}");
+                    }
+                    else if (card is SpellCard spellCard)
+                    {
+                        Console.WriteLine($"Spell Type: {spellCard.SpellType}");
+                    }
+
+                    Console.WriteLine();
+                }
+
+                string successResponse = "Package created successfully!";
+                SendResponse(successResponse, HttpStatusCode.OK);
+            }
+            catch (Exception e)
+            {
+                string errorResponse = $"Error: {e.Message}";
+                SendResponse(errorResponse, HttpStatusCode.InternalServerError);
+            }
+
+        }
+
         /// <summary>
         /// Sends an HTTP response
         /// </summary>
@@ -140,6 +184,7 @@ namespace mtcg
                 throw;
             }
         }
+
 
         // prints all users on the database
         private void PrintAllUsers()
