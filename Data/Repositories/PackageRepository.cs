@@ -17,6 +17,11 @@ namespace mtcg.Data.Repositories
             cardRepository = new CardRepository(dbConnectionManager);
         }
 
+        /// <summary>
+        /// Saves a new package with all new cards, updates an existing package, or throws an exception
+        /// </summary>
+        /// <param name="package"></param>
+        /// <exception cref="InvalidOperationException"></exception>
         public new void Save(Package package)
         {
             // check if it's a new package (not yet saved to the database)
@@ -30,32 +35,7 @@ namespace mtcg.Data.Repositories
             else
             {
                 // update package
-                Update(package);
-        }
-        }
-
-        /// <summary>
-        /// Updates an existing package
-        /// </summary>
-        /// <param name="package"></param>
-        /// <exception cref="InvalidOperationException"></exception>
-        private void Update(Package package)
-        {
-            // open connection
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
-
-            // check if the package with this ID exists in the database
-            var existingPackage = connection.QueryFirstOrDefault<Package>($"SELECT * FROM {_Table} WHERE Id = @Id", new { package.Id });
-            if (existingPackage != null)
-            {
-                // update the existing package record
-                connection.Execute($"UPDATE {_Table} SET price = @Price, owner = @OwnerId WHERE Id = @Id", package);
-            }
-            else
-            {
-                // throw an exception if the package with the specified ID doesn't exist
-                throw new InvalidOperationException($"Package with ID {package.Id} not found. Cannot update.");
+                Update(package, package.Id.ToString());
             }
         }
 
@@ -102,9 +82,13 @@ namespace mtcg.Data.Repositories
             }
         }
 
+        /// <summary>
+        /// Returns true if any card on this package already exists on the database
+        /// </summary>
+        /// <param name="package"></param>
+        /// <returns></returns>
         private bool HasExistingCard(Package package)
         {
-            Console.WriteLine("in HasExistingCard");
             // open database connection
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
@@ -115,15 +99,10 @@ namespace mtcg.Data.Repositories
             // check if any cards already exist on the database
             foreach(Card card in cards)
             {
-                Console.WriteLine($"will check for card with id { card.Id }");
-                var existingCard = connection.Query<Card>($"SELECT * FROM cards WHERE id = @Id", new { card.Id });
-                if (existingCard != null)
-                {
-                    Console.WriteLine("existingCard != null");
-                    return true;
-                }
+                // check if there is a card with this Id on the database
+                int count = connection.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM cards WHERE id = @Id", new { card.Id });
+                if (count > 0) return true;
             }
-            Console.WriteLine("no cards already exist");
             return false;
         }
     }

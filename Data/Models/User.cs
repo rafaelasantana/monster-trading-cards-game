@@ -7,7 +7,7 @@ namespace mtcg
         public int Id {get; set;}
         public string Username { get; set; }
         public string Password { get; set; }
-        public List<Card> Stack { get; set; }
+        // public List<Card> Stack { get; set; }
 
         /// <summary>
         /// Parameterless default constructor

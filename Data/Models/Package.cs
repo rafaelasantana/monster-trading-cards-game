@@ -4,7 +4,7 @@ namespace mtcg.Data.Models
 {
     public class Package
     {
-        public int? Id { get; set; }
+        public int Id { get; set; }
         public int Price { get; set; }
         public int OwnerId  { get; set; }
         private List<Card> Cards;

@@ -23,24 +23,8 @@ public abstract class Repository<T> : IRepository<T>
     protected Repository(DbConnectionManager dbConnectionManager)
     {
         _dbConnectionManager = dbConnectionManager;
-        InitializeTableAndFields();
+        // InitializeTableAndFields();
     }
-
-    /// <summary>
-    /// sets the _Table and _Fields properties based on the entity's type
-    /// </summary>
-    protected void InitializeTableAndFields() {
-
-        Type entityType = typeof(T);
-
-        // Use the entity type's name as the table name
-        _Table = entityType.Name;
-
-        // Get the fields (columns) from the entity's properties
-        var propertyNames = entityType.GetProperties().Select(property => property.Name);
-        _Fields = string.Join(", ", propertyNames);
-    }
-
 
     /// <summary>
     /// Gets the Object by its ID
@@ -88,6 +72,28 @@ public abstract class Repository<T> : IRepository<T>
         // execute delete
         connection.Execute($"DELETE FROM {_Table} Where Id = @Id", new {Id = id});
     }
+
+    public void Update(T obj, string id)
+    {
+        // open connection
+        using var connection = _dbConnectionManager.GetConnection();
+        connection.Open();
+
+        // check if the object with this ID exists in the database
+        int count = connection.QueryFirstOrDefault<int>($"SELECT COUNT(*) FROM {_Table} WHERE id = @Id", new { Id = id });
+
+        if (count > 0)
+        {
+            // update the existing object record
+            connection.Execute($"UPDATE {_Table} SET {_Fields} WHERE Id = @Id", obj);
+        }
+        else
+        {
+            // throw an exception if the object with the specified ID doesn't exist
+            throw new InvalidOperationException($"Object with ID {id} not found. Cannot update.");
+        }
+}
+
 
     /// <summary>
     /// Saves an object
