@@ -67,7 +67,7 @@ namespace mtcg
         /// </summary>
         /// <param name="username"></param>
         /// <returns></returns>
-        public User GetByUsername(string username)
+        public User? GetByUsername(string username)
         {
             // open connection
             using var connection = _dbConnectionManager.GetConnection();

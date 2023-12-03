@@ -70,13 +70,14 @@ namespace mtcg
         {
             try
             {
-                User newUser = ParseUserFromJson(json);
+                // create new user based on json data
+                User? newUser = ParseUserFromJson(json);
 
                 // check if username is already taken
                 if (userRepository.GetByUsername(newUser.Username) != null)
                 {
-                    string errorResponse = "Username already exists!";
                     // send error response
+                    string errorResponse = "Username already exists!";
                     SendResponse(errorResponse, HttpStatusCode.BadRequest);
                 }
                 else
@@ -84,17 +85,15 @@ namespace mtcg
                     // save new user
                     userRepository.Save(newUser);
 
-                    PrintAllUsers();
-
-                    string successResponse = "User registered successfully!";
                     // send success response
+                    string successResponse = "User registered successfully!";
                     SendResponse(successResponse, HttpStatusCode.OK);
                 }
             }
             catch (Exception e)
             {
-                string errorResponse = $"Error: {e.Message}";
                 // send error response
+                string errorResponse = $"Error: {e.Message}";
                 SendResponse(errorResponse, HttpStatusCode.InternalServerError);
             }
         }
@@ -103,26 +102,31 @@ namespace mtcg
         /// logs a registered user in, or sends an error response
         /// </summary>
         private void HandleUserLogin(string json) {
-            User loginUser = ParseUserFromJson(json);
+            // todo auth token?
+            User? loginUser = ParseUserFromJson(json);
 
             // get user's data from the database
-            User registeredUser = userRepository.GetByUsername(loginUser.Username);
+            User? registeredUser = userRepository.GetByUsername(loginUser.Username);
 
             // check if user exists and password matches
             if (registeredUser != null && BCrypt.Net.BCrypt.Verify(loginUser.Password, registeredUser.Password))
             {
-                string successResponse = "Login successful!";
                 // send success response
+                string successResponse = "Login successful!";
                 SendResponse(successResponse, HttpStatusCode.OK);
             }
             else
             {
-                string errorResponse = "Invalid username or password.";
                 // send error response
+                string errorResponse = "Invalid username or password.";
                 SendResponse(errorResponse, HttpStatusCode.Unauthorized);
             }
         }
 
+        /// <summary>
+        /// Creates a new package with unique cards or sends an error response
+        /// </summary>
+        /// <param name="json"></param>
         private void HandlePackageCreation(string json)
         {
             // TODO check authentication token for admin?
@@ -158,35 +162,21 @@ namespace mtcg
         }
 
         /// <summary>
-        /// Parses an User from JSON format
+        /// Returns an User parsed from JSON format or null
         /// </summary>
         /// <param name="json"></param>
         /// <returns></returns>
-        private static User ParseUserFromJson(string json)
+        private static User? ParseUserFromJson(string json)
         {
             try
             {
-                User newUser = JsonConvert.DeserializeObject<User>(json);
+                User? newUser = JsonConvert.DeserializeObject<User>(json);
                 return newUser;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error parsing user from JSON: {ex.Message}");
                 throw;
-            }
-        }
-
-
-        // prints all users on the database
-        private void PrintAllUsers()
-        {
-            Console.WriteLine("Registered Users:");
-
-            var users = userRepository.GetAll();
-
-            foreach (var user in users)
-            {
-                Console.WriteLine($"Username: {user.Username}, Password: {user.Password}");
             }
         }
     }
