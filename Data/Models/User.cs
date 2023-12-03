@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+
 namespace mtcg
 {
     public class User
@@ -7,10 +9,18 @@ namespace mtcg
         public string Password { get; set; }
         public List<Card> Stack { get; set; }
 
-        // Parameterless default constructor
+        /// <summary>
+        /// Parameterless default constructor
+        /// </summary>
         public User()
         {
         }
+        /// <summary>
+        /// Standard Constructor
+        /// </summary>
+        /// <param name="username"></param>
+        /// <param name="password"></param>
+        /// <exception cref="ArgumentNullException"></exception>
         public User(string username, string password)
         {
             // initialize Id as 0, will be updated once user is saved to the database

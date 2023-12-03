@@ -1,20 +1,41 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
-namespace mtcg.Controllers
+namespace mtcg.Data.Models
 {
-    public class PackageCreator
+    public class Package
     {
-        public List<Card> CreatePackage(string jsonData)
+        public int? Id { get; set; }
+        public int Price { get; set; }
+        public int OwnerId  { get; set; }
+        private List<Card> Cards;
+
+        /// <summary>
+        /// Creates a package of cards based on json request
+        /// </summary>
+        /// <param name="json"></param>
+        public Package(string json)
         {
-            // create list of cards
-            List<Card> cards = [];
+            // set Id to 0 (will be updated once saved to the database)
+            Id = 0;
+            // set OwnerId to 1 (admin)
+            OwnerId = 1;
+            // set price to 5 coins
+            Price = 5;
+
+            // add cards from json request
+            AddCardsFromJson(json);
+
+            // print cards
+            PrintCards();
+        }
+
+        private void AddCardsFromJson(string json)
+        {
+            // initialize list of cards
+            Cards = [];
 
             // get cards from request
-            JArray cardArray = JArray.Parse(jsonData);
+            JArray cardArray = JArray.Parse(json);
 
             foreach(var cardData in cardArray)
             {
@@ -28,6 +49,7 @@ namespace mtcg.Controllers
 
                 // create card based on the name
                 Card card;
+
                 if (name.Contains("Spell"))
                 {
                     // create a spell card
@@ -40,10 +62,9 @@ namespace mtcg.Controllers
                     card = new MonsterCard(id, name, damage, elementType, monsterType);
                 }
 
-                // add card to the package
-                cards.Add(card);
+                // add card to this package
+                Cards.Add(card);
             }
-            return cards;
         }
 
         /// <summary>
@@ -112,6 +133,30 @@ namespace mtcg.Controllers
                 default:
                     return MonsterType.Normal;
             }
+        }
+
+        public void PrintCards()
+        {
+            foreach (var card in Cards)
+            {
+                Console.WriteLine($"Created Card - Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}, ElementType: {card.ElementType}");
+
+                if (card is MonsterCard monsterCard)
+                {
+                    Console.WriteLine($"Monster Type: {monsterCard.MonsterType}");
+                }
+                else if (card is SpellCard spellCard)
+                {
+                    Console.WriteLine($"Spell Type: {spellCard.SpellType}");
+                }
+
+                Console.WriteLine();
+            }
+        }
+
+        public List<Card> GetCards()
+        {
+            return Cards;
         }
 
     }

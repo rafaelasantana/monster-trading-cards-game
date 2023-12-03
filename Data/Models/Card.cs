@@ -1,3 +1,5 @@
+using mtcg.Data.Models;
+
 namespace mtcg
 {
     public enum Element
@@ -25,22 +27,31 @@ namespace mtcg
         NormalSpell
     }
 
-    public abstract class Card(string id, string name, double damage, Element elementType)
+    public abstract class Card
     {
-        public string Id { get; set; } = id;
-        public string Name { get; set; } = name;
-        public double Damage { get; set; } = damage;
-        public Element ElementType { get; set; } = elementType;
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public double Damage { get; set; }
+        public Element ElementType { get; set; }
+        public int? PackageId { get; set; }
+        // public DateTime? CreatedAt { get; set; }
 
-        public void PrintCard()
+        public Card()
+        {}
+
+        public Card(string id, string name, double damage, Element elementType)
         {
-            Console.WriteLine($"Card ID: {Id}, Name: {Name}, Damage: {Damage}, Element: {ElementType}");
+            Id = id;
+            Name = name;
+            Damage = damage;
+            ElementType = elementType;
         }
 
-        public double CalculateDamageAgainst(Card opponent)
+        public void AttachToPackage(Package package)
         {
-            return 0;
+            PackageId = package.Id;
         }
+
     }
 
     public class MonsterCard : Card

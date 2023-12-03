@@ -1,5 +1,6 @@
 using System.Net;
-using mtcg.Controllers;
+using mtcg.Data.Models;
+using mtcg.Data.Repositories;
 using Newtonsoft.Json;
 
 namespace mtcg
@@ -8,13 +9,13 @@ namespace mtcg
     {
         private readonly HttpListenerContext context;
         private readonly UserRepository userRepository;
-        private readonly PackageCreator packageCreator;
+        private readonly PackageRepository packageRepository;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
         {
             this.context = context;
             userRepository = new UserRepository(dbConnectionManager);
-            packageCreator = new PackageCreator();
+            packageRepository = new PackageRepository(dbConnectionManager);
         }
 
         /// <summary>
@@ -27,23 +28,29 @@ namespace mtcg
                 using var reader = new StreamReader(context.Request.InputStream);
                 string json = reader.ReadToEnd();
 
-                if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/users")
+                if (context.Request.HttpMethod == "POST")
                 {
-                    HandleUserRegistration(json);
-                }
-                else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/sessions")
-                {
-                    HandleUserLogin(json);
-                }
-                else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/packages")
-                {
-                    HandlePackageCreation(json);
+                    switch (context.Request.Url.AbsolutePath)
+                    {
+                        case "/users":
+                            HandleUserRegistration(json);
+                            break;
+                        case "/sessions":
+                            HandleUserLogin(json);
+                            break;
+                        case "/packages":
+                            HandlePackageCreation(json);
+                            break;
+                        default:
+                            // Default response
+                            SendResponse("Hello, this is the server!", HttpStatusCode.OK);
+                            break;
+                    }
                 }
                 else
                 {
-                    // Default response
-                    string responseString = "Hello, this is the server!";
-                    SendResponse(responseString, HttpStatusCode.OK);
+                    // Default response for non-POST requests
+                    SendResponse("Hello, this is the server!", HttpStatusCode.OK);
                 }
             }
             catch (Exception ex)
@@ -54,6 +61,7 @@ namespace mtcg
 
             context.Response.Close();
         }
+
 
         /// <summary>
         /// Registers a new user with a hashed password, or sends an error response if the user already exists
@@ -117,26 +125,13 @@ namespace mtcg
 
         private void HandlePackageCreation(string json)
         {
+            // TODO check authentication token for admin?
             try
             {
-                List<Card> createdCards = packageCreator.CreatePackage(json);
-                // TODO save package to the database?
-
-                foreach (var card in createdCards)
-                {
-                    Console.WriteLine($"Created Card - Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}, ElementType: {card.ElementType}");
-
-                    if (card is MonsterCard monsterCard)
-                    {
-                        Console.WriteLine($"Monster Type: {monsterCard.MonsterType}");
-                    }
-                    else if (card is SpellCard spellCard)
-                    {
-                        Console.WriteLine($"Spell Type: {spellCard.SpellType}");
-                    }
-
-                    Console.WriteLine();
-                }
+                // create new package based on json data
+                Package package = new(json);
+                // save package to the database
+                packageRepository.Save(package);
 
                 string successResponse = "Package created successfully!";
                 SendResponse(successResponse, HttpStatusCode.OK);

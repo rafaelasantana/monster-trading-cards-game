@@ -16,6 +16,7 @@ namespace mtcg
         /// <param name="user"></param>
         public new void Save(User user)
         {
+            // TODO throw exceptions instead of only printing comments
             // open connection
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
