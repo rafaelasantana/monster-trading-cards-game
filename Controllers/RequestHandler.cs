@@ -65,7 +65,6 @@ namespace mtcg
             Context.Response.Close();
         }
 
-
         /// <summary>
         /// Registers a new user with a hashed password, or sends an error response if the user already exists
         /// </summary>
@@ -105,25 +104,35 @@ namespace mtcg
         /// logs a registered user in, or sends an error response
         /// </summary>
         private void HandleUserLogin(string json) {
-            User? loginUser = ParseUserFromJson(json);
 
-            // get user's data from the database
-            User? registeredUser = UserRepository.GetByUsername(loginUser.Username);
-
-            // check if user exists and password matches
-            if (registeredUser != null && BCrypt.Net.BCrypt.Verify(loginUser.Password, registeredUser.Password))
+            try
             {
-                // create a token for this session
-                SessionManager.CreateSessionToken(registeredUser.Username);
-                // send success response
-                string successResponse = "Login successful!";
-                SendResponse(successResponse, HttpStatusCode.OK);
+                User? loginUser = ParseUserFromJson(json);
+
+                // get user's data from the database
+                User? registeredUser = UserRepository.GetByUsername(loginUser.Username);
+
+                // check if user exists and password matches
+                if (registeredUser != null && BCrypt.Net.BCrypt.Verify(loginUser.Password, registeredUser.Password))
+                {
+                    // create a token for this session
+                    SessionManager.CreateSessionToken(registeredUser.Username);
+                    // send success response
+                    string successResponse = "Login successful!";
+                    SendResponse(successResponse, HttpStatusCode.OK);
+                }
+                else
+                {
+                    // send error response
+                    string errorResponse = "Invalid username or password.";
+                    SendResponse(errorResponse, HttpStatusCode.Unauthorized);
+                }
             }
-            else
+            catch (Exception e)
             {
                 // send error response
-                string errorResponse = "Invalid username or password.";
-                SendResponse(errorResponse, HttpStatusCode.Unauthorized);
+                string errorResponse = $"Error: {e.Message}";
+                SendResponse(errorResponse, HttpStatusCode.InternalServerError);
             }
         }
 
@@ -139,6 +148,7 @@ namespace mtcg
             // check if the token belongs to the admin
             if (!SessionManager.IsAdmin(token))
             {
+                // send error response
                 string errorResponse = "Unauthorized: Admin access required.";
                 SendResponse(errorResponse, HttpStatusCode.Unauthorized);
                 return;
@@ -150,17 +160,22 @@ namespace mtcg
                 Package package = new(json);
                 // save package to the database
                 PackageRepository.Save(package);
-
+                // send success response
                 string successResponse = "Package created successfully!";
                 SendResponse(successResponse, HttpStatusCode.OK);
             }
             catch (Exception e)
             {
+                // send error response
                 string errorResponse = $"Error: {e.Message}";
                 SendResponse(errorResponse, HttpStatusCode.InternalServerError);
             }
         }
 
+        /// <summary>
+        /// Extracts the authorization token from the request header
+        /// </summary>
+        /// <returns></returns>
         private string? ExtractAuthTokenFromHeader()
         {
             string? authToken = null;
