@@ -1,4 +1,5 @@
 using System.Net;
+using mtcg.Controllers;
 using mtcg.Data.Models;
 using mtcg.Data.Repositories;
 using Newtonsoft.Json;
@@ -7,15 +8,17 @@ namespace mtcg
 {
     public class RequestHandler
     {
-        private readonly HttpListenerContext context;
-        private readonly UserRepository userRepository;
-        private readonly PackageRepository packageRepository;
+        private readonly HttpListenerContext Context;
+        private readonly UserRepository UserRepository;
+        private readonly PackageRepository PackageRepository;
+        private readonly SessionManager SessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
         {
-            this.context = context;
-            userRepository = new UserRepository(dbConnectionManager);
-            packageRepository = new PackageRepository(dbConnectionManager);
+            Context = context;
+            UserRepository = new UserRepository(dbConnectionManager);
+            PackageRepository = new PackageRepository(dbConnectionManager);
+            SessionManager = new SessionManager();
         }
 
         /// <summary>
@@ -25,12 +28,12 @@ namespace mtcg
         {
             try
             {
-                using var reader = new StreamReader(context.Request.InputStream);
+                using var reader = new StreamReader(Context.Request.InputStream);
                 string json = reader.ReadToEnd();
 
-                if (context.Request.HttpMethod == "POST")
+                if (Context.Request.HttpMethod == "POST")
                 {
-                    switch (context.Request.Url.AbsolutePath)
+                    switch (Context.Request.Url.AbsolutePath)
                     {
                         case "/users":
                             HandleUserRegistration(json);
@@ -59,7 +62,7 @@ namespace mtcg
                 SendResponse(errorResponse, HttpStatusCode.InternalServerError);
             }
 
-            context.Response.Close();
+            Context.Response.Close();
         }
 
 
@@ -74,7 +77,7 @@ namespace mtcg
                 User? newUser = ParseUserFromJson(json);
 
                 // check if username is already taken
-                if (userRepository.GetByUsername(newUser.Username) != null)
+                if (UserRepository.GetByUsername(newUser.Username) != null)
                 {
                     // send error response
                     string errorResponse = "Username already exists!";
@@ -83,7 +86,7 @@ namespace mtcg
                 else
                 {
                     // save new user
-                    userRepository.Save(newUser);
+                    UserRepository.Save(newUser);
 
                     // send success response
                     string successResponse = "User registered successfully!";
@@ -102,15 +105,16 @@ namespace mtcg
         /// logs a registered user in, or sends an error response
         /// </summary>
         private void HandleUserLogin(string json) {
-            // todo auth token?
             User? loginUser = ParseUserFromJson(json);
 
             // get user's data from the database
-            User? registeredUser = userRepository.GetByUsername(loginUser.Username);
+            User? registeredUser = UserRepository.GetByUsername(loginUser.Username);
 
             // check if user exists and password matches
             if (registeredUser != null && BCrypt.Net.BCrypt.Verify(loginUser.Password, registeredUser.Password))
             {
+                // create a token for this session
+                SessionManager.CreateSessionToken(registeredUser.Username);
                 // send success response
                 string successResponse = "Login successful!";
                 SendResponse(successResponse, HttpStatusCode.OK);
@@ -124,18 +128,28 @@ namespace mtcg
         }
 
         /// <summary>
-        /// Creates a new package with unique cards or sends an error response
+        /// Checks for admin access, creates a new package with unique cards or sends an error response
         /// </summary>
         /// <param name="json"></param>
         private void HandlePackageCreation(string json)
         {
-            // TODO check authentication token for admin?
+            // extract token from header
+            string? token = ExtractAuthTokenFromHeader();
+
+            // check if the token belongs to the admin
+            if (!SessionManager.IsAdmin(token))
+            {
+                string errorResponse = "Unauthorized: Admin access required.";
+                SendResponse(errorResponse, HttpStatusCode.Unauthorized);
+                return;
+            }
+
             try
             {
                 // create new package based on json data
                 Package package = new(json);
                 // save package to the database
-                packageRepository.Save(package);
+                PackageRepository.Save(package);
 
                 string successResponse = "Package created successfully!";
                 SendResponse(successResponse, HttpStatusCode.OK);
@@ -145,7 +159,29 @@ namespace mtcg
                 string errorResponse = $"Error: {e.Message}";
                 SendResponse(errorResponse, HttpStatusCode.InternalServerError);
             }
+        }
 
+        private string? ExtractAuthTokenFromHeader()
+        {
+            string? authToken = null;
+
+            // extract the Authorization header
+            string? authHeader = Context.Request.Headers["Authorization"];
+
+            // check if Authorization header is present in the request
+            if(!string.IsNullOrEmpty(authHeader))
+            {
+                // split header to get the token part
+                string[] headerParts = authHeader.Split(' ');
+
+                // check if the header has the expected format
+                if (headerParts.Length == 2 && headerParts[0].Equals("Bearer", StringComparison.OrdinalIgnoreCase))
+                {
+                    // extract auth token
+                    authToken = headerParts[1];
+                }
+            }
+            return authToken;
         }
 
         /// <summary>
@@ -156,9 +192,9 @@ namespace mtcg
         private void SendResponse(string responseString, HttpStatusCode statusCode)
         {
             byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(responseString);
-            context.Response.StatusCode = (int)statusCode;
-            context.Response.ContentLength64 = responseBytes.Length;
-            context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
+            Context.Response.StatusCode = (int)statusCode;
+            Context.Response.ContentLength64 = responseBytes.Length;
+            Context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
         }
 
         /// <summary>
