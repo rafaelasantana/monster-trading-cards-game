@@ -1,7 +1,7 @@
 using Npgsql;
 using Microsoft.Extensions.Configuration;
 
-namespace mtcg
+namespace mtcg.Data.Repositories
 {
     public class DbConnectionManager
     {

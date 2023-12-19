@@ -1,6 +1,4 @@
-using mtcg.Data.Models;
-
-namespace mtcg
+namespace mtcg.Data.Models
 {
     public enum Element
     {
@@ -34,7 +32,7 @@ namespace mtcg
         public double Damage { get; set; }
         public Element ElementType { get; set; }
         public int? PackageId { get; set; }
-        // public DateTime? CreatedAt { get; set; }
+        public int? OwnerId { get; set; }
 
         public Card()
         {}
@@ -45,6 +43,8 @@ namespace mtcg
             Name = name;
             Damage = damage;
             ElementType = elementType;
+            // set the owner ID to null to show card is not owned by anyone yet
+            // OwnerId = null;
         }
 
         public void AttachToPackage(Package package)

@@ -1,6 +1,9 @@
 using System.Net;
+using mtcg.Data.Repositories;
+using mtcg.Data.Models;
+using Newtonsoft.Json;
 
-namespace mtcg
+namespace mtcg.Controllers
 {
     public class HttpServer
     {

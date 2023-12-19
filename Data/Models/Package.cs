@@ -6,9 +6,12 @@ namespace mtcg.Data.Models
     {
         public int Id { get; set; }
         public int Price { get; set; }
-        public int OwnerId  { get; set; }
+        public int? OwnerId  { get; set; }
+        
         private List<Card> Cards;
 
+        public Package()
+        {}
         /// <summary>
         /// Creates a package of cards based on json request
         /// </summary>
@@ -17,8 +20,8 @@ namespace mtcg.Data.Models
         {
             // set Id to 0 (will be updated once saved to the database)
             Id = 0;
-            // set OwnerId to 1 (admin)
-            OwnerId = 1;
+            // set OwnerId to null
+            OwnerId = null;
             // set price to 5 coins
             Price = 5;
 
@@ -137,6 +140,7 @@ namespace mtcg.Data.Models
 
         public void PrintCards()
         {
+            Console.WriteLine($"Created Package with Id: { Id }, Price: { Price }, OwnerId: { OwnerId }");
             foreach (var card in Cards)
             {
                 Console.WriteLine($"Created Card - Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}, ElementType: {card.ElementType}");

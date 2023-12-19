@@ -1,40 +1,91 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Dapper;
 using mtcg.Data.Models;
 
 namespace mtcg.Data.Repositories
 {
-    public class CardRepository : Repository<Card>
+    public class CardRepository
     {
-        public CardRepository(DbConnectionManager dbConnectionManager) : base(dbConnectionManager)
+        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly string _Table = "cards";
+        private readonly string _Fields = "id, name, damage, elementType, isMonster, packageId, ownerId";
+
+        public CardRepository(DbConnectionManager dbConnectionManager)
         {
-            _Table = "cards";
-            _Fields = "id, name, damage, elementType, packageId";
-            // InitializeTableAndFields();
+            _dbConnectionManager = dbConnectionManager;
         }
 
-        public new void Save(Card card)
-        {   // open connection
+        /// <summary>
+        /// Saves a new card to the database or updates an existing card
+        /// </summary>
+        /// <param name="card"></param>
+        public void Save(Card card)
+        {
+            // open connection
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
+            // Determine if the card is a MonsterCard
+            int isMonster = card is MonsterCard ? 1 : 0;
+
+            // Prepare the card for insertion or update
+            var cardToSave = new {
+                card.Id,
+                card.Name,
+                card.Damage,
+                ElementType = (int)card.ElementType,
+                isMonster,
+                card.PackageId,
+                card.OwnerId
+            };
+
             // check if card exists on the database
-            int count = connection.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM cards WHERE id = @Id", new { card.Id });
+            int count = connection.QueryFirstOrDefault<int>($"SELECT COUNT(*) FROM {_Table} WHERE id = @Id", new { card.Id });
             if (count == 0)
             {
                 // insert new record
-                var query = $"INSERT INTO {_Table} ({_Fields}) VALUES (@Id, @Name, @Damage, @ElementType, @PackageId)";
-                connection.Execute(query, card);
+                var query = $"INSERT INTO {_Table} ({_Fields}) VALUES (@Id, @Name, @Damage, @ElementType, @IsMonster, @PackageId, @OwnerId)";
+                connection.Execute(query, cardToSave);
             }
             else
             {
                 // update existing card
-                Update(card, card.Id);
+                Update(card);
             }
         }
 
+        /// <summary>
+        /// Updates an existing card on the database
+        /// </summary>
+        /// <param name="card"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void Update(Card card)
+        {
+            using var connection = _dbConnectionManager.GetConnection();
+            connection.Open();
+
+            // Determine if the card is a MonsterCard
+            int isMonster = card is MonsterCard ? 1 : 0;
+
+            // Prepare the card for updating
+            var cardToUpdate = new {
+                card.Id,
+                card.Name,
+                card.Damage,
+                ElementType = (int)card.ElementType,
+                isMonster,
+                card.PackageId,
+                card.OwnerId
+            };
+
+            // update existing card
+            var query = $"UPDATE {_Table} SET name=@Name, damage=@Damage, elementType=@ElementType, isMonster=@IsMonster, packageId=@PackageId, ownerId=@OwnerId WHERE id=@Id";
+            int rowsAffected = connection.Execute(query, cardToUpdate);
+
+            if (rowsAffected == 0)
+            {
+                throw new InvalidOperationException("Update failed: No card found with the given ID.");
+            }
+        }
     }
 }

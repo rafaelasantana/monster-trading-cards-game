@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
+using mtcg.Data.Repositories;
+using mtcg.Controllers;
 
 namespace mtcg
 {

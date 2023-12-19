@@ -7,14 +7,17 @@ using mtcg.Data.Models;
 
 namespace mtcg.Data.Repositories
 {
-    public class PackageRepository : Repository<Package>
+    public class PackageRepository
     {
-        private readonly CardRepository cardRepository;
-        public PackageRepository(DbConnectionManager dbConnectionManager) : base(dbConnectionManager)
+        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly string _Table = "packages";
+        private readonly string _Fields = "id, price, ownerId";
+        private readonly CardRepository _cardRepository;
+
+        public PackageRepository(DbConnectionManager dbConnectionManager)
         {
-            _Table = "packages";
-            _Fields = "price, owner";
-            cardRepository = new CardRepository(dbConnectionManager);
+            _dbConnectionManager = dbConnectionManager;
+            _cardRepository = new CardRepository(dbConnectionManager);
         }
 
         /// <summary>
@@ -22,7 +25,7 @@ namespace mtcg.Data.Repositories
         /// </summary>
         /// <param name="package"></param>
         /// <exception cref="InvalidOperationException"></exception>
-        public new void Save(Package package)
+        public void Save(Package package)
         {
             // check if it's a new package (not yet saved to the database)
             if (package.Id == 0)
@@ -35,9 +38,39 @@ namespace mtcg.Data.Repositories
             else
             {
                 // update package
-                Update(package, package.Id.ToString());
+                Update(package);
             }
         }
+
+        /// <summary>
+        /// Updates an existing package or throws an exception
+        /// </summary>
+        /// <param name="package"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void Update(Package package)
+        {
+            using var connection = _dbConnectionManager.GetConnection();
+            connection.Open();
+
+            // Prepare the query to update the package
+            var query = $"UPDATE packages SET price = @Price, ownerId = @OwnerId WHERE Id = @Id";
+
+            // Execute the update query
+            var rowsAffected = connection.Execute(query, new { package.Price, package.OwnerId, package.Id });
+
+            if (rowsAffected == 0)
+            {
+                throw new InvalidOperationException("Update failed: No package found with the given ID.");
+            }
+
+            // Update the cards if necessary
+            foreach (var card in package.GetCards())
+            {
+                card.PackageId = package.Id;
+                _cardRepository.Update(card);
+            }
+        }
+
 
         /// <summary>
         /// Creates a new package record on the database and attaches the cards to this package
@@ -50,7 +83,7 @@ namespace mtcg.Data.Repositories
             connection.Open();
 
             // insert new package and return the generated Id
-            int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_Table} ({_Fields}) VALUES (@Price, @OwnerId) RETURNING Id", package);
+            int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_Table} (price, ownerId) VALUES (@Price, @OwnerId) RETURNING Id", package);
 
             // check if insert is successful
             if (generatedId > 0)
@@ -78,7 +111,7 @@ namespace mtcg.Data.Repositories
             foreach(Card card in cards)
             {
                 card.AttachToPackage(package);
-                cardRepository.Save(card);
+                _cardRepository.Save(card);
             }
         }
 
@@ -105,5 +138,50 @@ namespace mtcg.Data.Repositories
             }
             return false;
         }
+
+        /// <summary>
+        /// Returns an available package (not owned by any user)
+        /// </summary>
+        /// <returns></returns>
+        public Package GetNextAvailablePackage()
+        {
+            // open connection
+            using var connection = _dbConnectionManager.GetConnection();
+            connection.Open();
+
+            // Select a package with no owner yet
+            var query = "SELECT * FROM packages WHERE OwnerId IS NULL LIMIT 1;";
+            Package package = connection.QueryFirstOrDefault<Package>(query);
+
+            return package;
+        }
+
+        /// <summary>
+        /// Assigns a package to the user, updating the package and cards records, or throws an exception
+        /// </summary>
+        /// <param name="package"></param>
+        /// <param name="user"></param>
+        public void AssignPackageToUser(Package package, User user)
+        {
+            // open connection
+            using var connection = _dbConnectionManager.GetConnection();
+            connection.Open();
+
+            try
+            {
+                // Update the OwnerId of the package
+                var packageUpdateQuery = "UPDATE packages SET OwnerId = @OwnerId WHERE Id = @PackageId";
+                connection.Execute(packageUpdateQuery, new { OwnerId = user.Id, PackageId = package.Id });
+
+                // Update the owner of all cards in the package
+                var cardUpdateQuery = "UPDATE cards SET ownerId = @OwnerId WHERE PackageId = @PackageId";
+                connection.Execute(cardUpdateQuery, new { OwnerId = user.Id, PackageId = package.Id });
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("There was an error assigning the package to the user: " + ex.Message);
+            }
+        }
+
     }
 }

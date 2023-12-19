@@ -1,16 +1,17 @@
 using System.Net;
-using mtcg.Controllers;
 using mtcg.Data.Models;
 using mtcg.Data.Repositories;
+using mtcg.Controllers;
 using Newtonsoft.Json;
 
-namespace mtcg
+namespace mtcg.Controllers
 {
     public class RequestHandler
     {
         private readonly HttpListenerContext Context;
         private readonly UserRepository UserRepository;
         private readonly PackageRepository PackageRepository;
+        private readonly TransactionRepository TransactionRepository;
         private readonly SessionManager SessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
@@ -18,6 +19,7 @@ namespace mtcg
             Context = context;
             UserRepository = new UserRepository(dbConnectionManager);
             PackageRepository = new PackageRepository(dbConnectionManager);
+            TransactionRepository = new TransactionRepository(dbConnectionManager, UserRepository, PackageRepository);
             SessionManager = new SessionManager();
         }
 
@@ -43,6 +45,9 @@ namespace mtcg
                             break;
                         case "/packages":
                             HandlePackageCreation(json);
+                            break;
+                        case "/transactions/packages":
+                            HandlePackagePurchase();
                             break;
                         default:
                             // Default response
@@ -169,6 +174,36 @@ namespace mtcg
                 // send error response
                 string errorResponse = $"Error: {e.Message}";
                 SendResponse(errorResponse, HttpStatusCode.InternalServerError);
+            }
+        }
+
+        /// <summary>
+        /// Executes the purchase of a package by an user, or sends an error response
+        /// </summary>
+        private void HandlePackagePurchase()
+        {
+            string? token = ExtractAuthTokenFromHeader();
+            string? username = SessionManager.GetUserFromToken(token);
+            if (username == null)
+            {
+                SendResponse("Invalid or expired token.", HttpStatusCode.Unauthorized);
+                return;
+            }
+
+            User? user = UserRepository.GetByUsername(username);
+            if (user == null)
+            {
+                SendResponse("User not found.", HttpStatusCode.NotFound);
+                return;
+            }
+
+            if (TransactionRepository.PurchasePackage(user, out string errorMessage))
+            {
+                SendResponse("Package purchased successfully!", HttpStatusCode.OK);
+            }
+            else
+            {
+                SendResponse(errorMessage, HttpStatusCode.BadRequest);
             }
         }
 

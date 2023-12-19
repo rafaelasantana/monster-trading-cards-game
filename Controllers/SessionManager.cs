@@ -68,5 +68,21 @@ namespace mtcg.Controllers
             return IsValidSessionToken(token, out var username) && username == "admin";
         }
 
+        public static string? GetUserFromToken(string token)
+        {
+            // Find the username associated with the provided token
+            var userEntry = UserTokens.FirstOrDefault(pair => pair.Value == token);
+
+            // Check if an entry was found
+            if (!string.IsNullOrEmpty(userEntry.Key))
+            {
+                return userEntry.Key; // Return the username
+            }
+
+            // If no entry is found, return null
+            return null;
+        }
+
+
     }
 }
