@@ -64,6 +64,9 @@ namespace mtcg.Controllers
                         case "/cards":
                             HandleGetCards();
                             break;
+                        case "/deck":
+                            HandleGetDeck();
+                            break;
                         default:
                             // Default response
                             SendResponse("Hello, this is the server!", HttpStatusCode.OK);
@@ -197,52 +200,78 @@ namespace mtcg.Controllers
         /// </summary>
         private void HandlePackagePurchase()
         {
-            string? token = ExtractAuthTokenFromHeader();
-            string? username = SessionManager.GetUserFromToken(token);
-            if (username == null)
+            try
             {
-                SendResponse("Invalid or expired token.", HttpStatusCode.Unauthorized);
-                return;
-            }
+                User user = ValidateTokenAndGetUser();
 
-            User? user = UserRepository.GetByUsername(username);
-            if (user == null)
-            {
-                SendResponse("User not found.", HttpStatusCode.NotFound);
-                return;
+                if (TransactionRepository.PurchasePackage(user, out string errorMessage))
+                {
+                    SendResponse("Package purchased successfully!", HttpStatusCode.OK);
+                }
+                else
+                {
+                    SendResponse(errorMessage, HttpStatusCode.BadRequest);
+                }
             }
-
-            if (TransactionRepository.PurchasePackage(user, out string errorMessage))
+            catch (Exception ex)
             {
-                SendResponse("Package purchased successfully!", HttpStatusCode.OK);
-            }
-            else
-            {
-                SendResponse(errorMessage, HttpStatusCode.BadRequest);
+                SendResponse(ex.Message, HttpStatusCode.Unauthorized);
             }
         }
+
 
         /// <summary>
         /// Gets all cards for this user and returns them with the response
         /// </summary>
         private void HandleGetCards()
         {
+            try
+            {
+                User user = ValidateTokenAndGetUser();
+                var cards = CardRepository.GetCardsByUserId(user.Id);
+                SendFormattedResponse(cards, HttpStatusCode.OK);
+            }
+            catch (Exception ex)
+            {
+                SendResponse(ex.Message, HttpStatusCode.Unauthorized);
+            }
+        }
+
+        private void HandleGetDeck()
+        {
+            try
+            {
+                // User user = ValidateTokenAndGetUser();
+                // var deck = CardRepository.GetDeckByUserId(user.Id);
+                // if (deck == null)
+                // {
+                //     SendResponse("Deck not found.", HttpStatusCode.NotFound);
+                //     return;
+                // }
+
+                // SendFormattedResponse(Context.Response, deck); // Sending the deck as a JSON response
+            }
+            catch (Exception ex)
+            {
+                 SendResponse(ex.Message, HttpStatusCode.Unauthorized);
+            }
+        }
+
+        private User ValidateTokenAndGetUser()
+        {
             string? token = ExtractAuthTokenFromHeader();
             string? username = SessionManager.GetUserFromToken(token);
             if (username == null)
             {
-                SendResponse("Invalid or expired token.", HttpStatusCode.Unauthorized);
-                return;
+                throw new InvalidOperationException("Invalid or expired token.");
             }
 
             User? user = UserRepository.GetByUsername(username);
             if (user == null)
             {
-                SendResponse("User not found.", HttpStatusCode.NotFound);
-                return;
+                throw new InvalidOperationException("User not found.");
             }
-            var cards = CardRepository.GetCardsByUserId(user.Id);
-            SendFormattedResponse(cards, HttpStatusCode.OK);
+            return user;
         }
 
         /// <summary>

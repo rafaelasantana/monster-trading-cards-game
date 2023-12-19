@@ -182,6 +182,5 @@ namespace mtcg.Data.Repositories
                 throw new InvalidOperationException("There was an error assigning the package to the user: " + ex.Message);
             }
         }
-
     }
 }
