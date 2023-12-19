@@ -13,6 +13,7 @@ namespace mtcg.Controllers
         private readonly PackageRepository PackageRepository;
         private readonly TransactionRepository TransactionRepository;
         private readonly CardRepository CardRepository;
+        private readonly DeckRepository DeckRepository;
         private readonly SessionManager SessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
@@ -22,6 +23,7 @@ namespace mtcg.Controllers
             PackageRepository = new PackageRepository(dbConnectionManager);
             TransactionRepository = new TransactionRepository(dbConnectionManager, UserRepository, PackageRepository);
             CardRepository = new CardRepository(dbConnectionManager);
+            DeckRepository = new DeckRepository(dbConnectionManager);
             SessionManager = new SessionManager();
         }
 
@@ -37,41 +39,15 @@ namespace mtcg.Controllers
 
                 if (Context.Request.HttpMethod == "POST")
                 {
-                    switch (Context.Request.Url.AbsolutePath)
-                    {
-                        case "/users":
-                            HandleUserRegistration(json);
-                            break;
-                        case "/sessions":
-                            HandleUserLogin(json);
-                            break;
-                        case "/packages":
-                            HandlePackageCreation(json);
-                            break;
-                        case "/transactions/packages":
-                            HandlePackagePurchase();
-                            break;
-                        default:
-                            // Default response
-                            SendResponse("Hello, this is the server!", HttpStatusCode.OK);
-                            break;
-                    }
+                    HandlePOST(json);
                 }
                 else if (Context.Request.HttpMethod == "GET")
                 {
-                    switch (Context.Request.Url.AbsolutePath)
-                    {
-                        case "/cards":
-                            HandleGetCards();
-                            break;
-                        case "/deck":
-                            HandleGetDeck();
-                            break;
-                        default:
-                            // Default response
-                            SendResponse("Hello, this is the server!", HttpStatusCode.OK);
-                            break;
-                    }
+                    HandleGET(json);
+                }
+                else if (Context.Request.HttpMethod == "PUT")
+                {
+                    HandlePUT(json);
                 }
                 else
                 {
@@ -86,6 +62,72 @@ namespace mtcg.Controllers
             }
 
             Context.Response.Close();
+        }
+
+        /// <summary>
+        /// Handles POST requests
+        /// </summary>
+        /// <param name="json"></param>
+        private void HandlePOST(string json)
+        {
+            switch (Context.Request.Url.AbsolutePath)
+            {
+                case "/users":
+                    HandleUserRegistration(json);
+                    break;
+                case "/sessions":
+                    HandleUserLogin(json);
+                    break;
+                case "/packages":
+                    HandlePackageCreation(json);
+                    break;
+                case "/transactions/packages":
+                    HandlePackagePurchase();
+                    break;
+                default:
+                    // Default response
+                    SendResponse("Hello, this is the server!", HttpStatusCode.OK);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Handles GET requests
+        /// </summary>
+        /// <param name="json"></param>
+        private void HandleGET(string json)
+        {
+            switch (Context.Request.Url.AbsolutePath)
+            {
+                case "/cards":
+                    HandleGetCards();
+                    break;
+                case "/deck":
+                    HandleGetDeck();
+                    break;
+                default:
+                    // Default response
+                    SendResponse("Hello, this is the server!", HttpStatusCode.OK);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Handles PUT requests
+        /// </summary>
+        /// <param name="json"></param>
+        private void HandlePUT(string json)
+        {
+            switch (Context.Request.Url.AbsolutePath)
+            {
+                case "/deck":
+                    HandleConfigureDeck(json);
+                    break;
+                default:
+                    // Default response
+                    SendResponse("Hello, this is the server!", HttpStatusCode.OK);
+                    break;
+            }
         }
 
         /// <summary>
@@ -219,7 +261,6 @@ namespace mtcg.Controllers
             }
         }
 
-
         /// <summary>
         /// Gets all cards for this user and returns them with the response
         /// </summary>
@@ -229,6 +270,12 @@ namespace mtcg.Controllers
             {
                 User user = ValidateTokenAndGetUser();
                 var cards = CardRepository.GetCardsByUserId(user.Id);
+
+                if (cards.Count == 0)
+                {
+                    SendResponse("You don't have any cards yet.", HttpStatusCode.OK);
+                    return;
+                }
                 SendFormattedResponse(cards, HttpStatusCode.OK);
             }
             catch (Exception ex)
@@ -237,26 +284,67 @@ namespace mtcg.Controllers
             }
         }
 
+        /// <summary>
+        /// Gets all cards in this user's deck and returns them with the response
+        /// </summary>
         private void HandleGetDeck()
         {
             try
             {
-                // User user = ValidateTokenAndGetUser();
-                // var deck = CardRepository.GetDeckByUserId(user.Id);
-                // if (deck == null)
-                // {
-                //     SendResponse("Deck not found.", HttpStatusCode.NotFound);
-                //     return;
-                // }
+                User user = ValidateTokenAndGetUser();
+                var deck = DeckRepository.GetDeckByUserId(user.Id);
+                if (deck.Count == 0)
+                {
+                    SendResponse("Your deck is empty.", HttpStatusCode.OK);
+                    return;
+                }
 
-                // SendFormattedResponse(Context.Response, deck); // Sending the deck as a JSON response
+                SendFormattedResponse(deck, HttpStatusCode.OK); // Sending the deck as a JSON response
             }
             catch (Exception ex)
             {
-                 SendResponse(ex.Message, HttpStatusCode.Unauthorized);
+                SendResponse(ex.Message, HttpStatusCode.Unauthorized);
             }
         }
 
+        private void HandleConfigureDeck(string json)
+        {
+            try
+            {
+                // Validate the user
+                User user = ValidateTokenAndGetUser();
+
+                // Deserialize JSON payload
+                var cardIds = JsonConvert.DeserializeObject<string[]>(json);
+                if (cardIds == null || cardIds.Length != 4)
+                {
+                    SendResponse("Invalid card configuration.", HttpStatusCode.BadRequest);
+                    return;
+                }
+
+                // Validate and configure the deck
+                bool isDeckConfigured = DeckRepository.ConfigureDeck(user.Id, cardIds);
+                if (isDeckConfigured)
+                {
+                    SendResponse("Deck successfully configured.", HttpStatusCode.OK);
+                }
+                else
+                {
+                    SendResponse("Failed to configure deck.", HttpStatusCode.BadRequest);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                SendResponse(ex.Message, HttpStatusCode.Unauthorized);
+            }
+        }
+
+        /// <summary>
+        /// Validates the token and returns the associated user, or throws an exception
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         private User ValidateTokenAndGetUser()
         {
             string? token = ExtractAuthTokenFromHeader();

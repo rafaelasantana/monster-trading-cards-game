@@ -109,6 +109,5 @@ namespace mtcg.Data.Repositories
 
             return cards;
         }
-
     }
 }

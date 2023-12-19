@@ -20,7 +20,6 @@ namespace mtcg.Controllers
             string token = GenerateNotSecureToken(username);
             // store pair locally
             UserTokens[username] = token;
-            Console.WriteLine($"Created token { token } for { username }");
             return token;
         }
 
