@@ -87,5 +87,28 @@ namespace mtcg.Data.Repositories
                 throw new InvalidOperationException("Update failed: No card found with the given ID.");
             }
         }
+
+        /// <summary>
+        /// Fetches all cards that belong to the user and returns them as a list
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public List<Card> GetCardsByUserId(int userId)
+        {
+            using var connection = _dbConnectionManager.GetConnection();
+            connection.Open();
+
+            var query = "SELECT * FROM cards WHERE ownerId = @UserId";
+            var cards = connection.Query<Card>(query, new { UserId = userId }).ToList();
+
+            if (cards == null)
+            {
+                throw new InvalidOperationException("No cards found for the user.");
+            }
+
+            return cards;
+        }
+
     }
 }

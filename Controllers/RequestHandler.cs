@@ -12,6 +12,7 @@ namespace mtcg.Controllers
         private readonly UserRepository UserRepository;
         private readonly PackageRepository PackageRepository;
         private readonly TransactionRepository TransactionRepository;
+        private readonly CardRepository CardRepository;
         private readonly SessionManager SessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
@@ -20,6 +21,7 @@ namespace mtcg.Controllers
             UserRepository = new UserRepository(dbConnectionManager);
             PackageRepository = new PackageRepository(dbConnectionManager);
             TransactionRepository = new TransactionRepository(dbConnectionManager, UserRepository, PackageRepository);
+            CardRepository = new CardRepository(dbConnectionManager);
             SessionManager = new SessionManager();
         }
 
@@ -48,6 +50,19 @@ namespace mtcg.Controllers
                             break;
                         case "/transactions/packages":
                             HandlePackagePurchase();
+                            break;
+                        default:
+                            // Default response
+                            SendResponse("Hello, this is the server!", HttpStatusCode.OK);
+                            break;
+                    }
+                }
+                else if (Context.Request.HttpMethod == "GET")
+                {
+                    switch (Context.Request.Url.AbsolutePath)
+                    {
+                        case "/cards":
+                            HandleGetCards();
                             break;
                         default:
                             // Default response
@@ -208,6 +223,29 @@ namespace mtcg.Controllers
         }
 
         /// <summary>
+        /// Gets all cards for this user and returns them with the response
+        /// </summary>
+        private void HandleGetCards()
+        {
+            string? token = ExtractAuthTokenFromHeader();
+            string? username = SessionManager.GetUserFromToken(token);
+            if (username == null)
+            {
+                SendResponse("Invalid or expired token.", HttpStatusCode.Unauthorized);
+                return;
+            }
+
+            User? user = UserRepository.GetByUsername(username);
+            if (user == null)
+            {
+                SendResponse("User not found.", HttpStatusCode.NotFound);
+                return;
+            }
+            var cards = CardRepository.GetCardsByUserId(user.Id);
+            SendFormattedResponse(cards, HttpStatusCode.OK);
+        }
+
+        /// <summary>
         /// Extracts the authorization token from the request header
         /// </summary>
         /// <returns></returns>
@@ -242,6 +280,22 @@ namespace mtcg.Controllers
         private void SendResponse(string responseString, HttpStatusCode statusCode)
         {
             byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(responseString);
+            Context.Response.StatusCode = (int)statusCode;
+            Context.Response.ContentLength64 = responseBytes.Length;
+            Context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
+        }
+
+        /// <summary>
+        /// Sends an HTTP response with formatted JSON data
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="statusCode"></param>
+        private void SendFormattedResponse(object data, HttpStatusCode statusCode)
+        {
+            string jsonResponse = JsonConvert.SerializeObject(data, Formatting.Indented);
+            byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(jsonResponse);
+
+            Context.Response.ContentType = "application/json";
             Context.Response.StatusCode = (int)statusCode;
             Context.Response.ContentLength64 = responseBytes.Length;
             Context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
