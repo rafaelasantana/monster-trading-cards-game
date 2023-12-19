@@ -23,7 +23,6 @@ namespace mtcg.Data.Repositories
         /// <param name="transaction"></param>
         public void Save(Transaction transaction)
         {
-            Console.WriteLine("Will save new transaction:");
             // open connection
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
@@ -63,16 +62,13 @@ namespace mtcg.Data.Repositories
                 // Deduct coins and update user's coins
                 user.Coins -= package.Price;
                 _userRepository.Update(user);
-                Console.WriteLine("Updated user's coins");
 
                 // Assign cards from the package to the user
                 _packageRepository.AssignPackageToUser(package, user);
-                Console.WriteLine("Assigned package to user");
 
                 // Create and save transaction
                 Transaction transactionRecord = new(user.Id, package.Id, package.Price);
                 this.Save(transactionRecord);
-                Console.WriteLine("Saved transaction");
 
                 errorMessage = string.Empty;
                 return true;

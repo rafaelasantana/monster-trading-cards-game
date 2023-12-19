@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using mtcg.Data.Models;
 using mtcg.Data.Repositories;
 using mtcg.Controllers;
@@ -276,7 +277,7 @@ namespace mtcg.Controllers
                     SendResponse("You don't have any cards yet.", HttpStatusCode.OK);
                     return;
                 }
-                SendFormattedResponse(cards, HttpStatusCode.OK);
+                SendFormattedJSONResponse(cards, HttpStatusCode.OK);
             }
             catch (Exception ex)
             {
@@ -299,7 +300,18 @@ namespace mtcg.Controllers
                     return;
                 }
 
-                SendFormattedResponse(deck, HttpStatusCode.OK); // Sending the deck as a JSON response
+                // Check if format=plain is requested
+                string format = Context.Request.QueryString["format"];
+                if (format == "plain")
+                {
+                    string plainResponse = CreatePlainTextResponse(deck);
+                    SendResponse(plainResponse, HttpStatusCode.OK);
+                }
+                else
+                {
+                    SendFormattedJSONResponse(deck, HttpStatusCode.OK);
+                }
+
             }
             catch (Exception ex)
             {
@@ -307,6 +319,10 @@ namespace mtcg.Controllers
             }
         }
 
+        /// <summary>
+        /// Configures the user's deck with the requested cards, or sends an error response
+        /// </summary>
+        /// <param name="json"></param>
         private void HandleConfigureDeck(string json)
         {
             try
@@ -398,6 +414,7 @@ namespace mtcg.Controllers
         {
             byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(responseString);
             Context.Response.StatusCode = (int)statusCode;
+            Context.Response.ContentType = "text/plain";
             Context.Response.ContentLength64 = responseBytes.Length;
             Context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
         }
@@ -407,7 +424,7 @@ namespace mtcg.Controllers
         /// </summary>
         /// <param name="data"></param>
         /// <param name="statusCode"></param>
-        private void SendFormattedResponse(object data, HttpStatusCode statusCode)
+        private void SendFormattedJSONResponse(object data, HttpStatusCode statusCode)
         {
             string jsonResponse = JsonConvert.SerializeObject(data, Formatting.Indented);
             byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(jsonResponse);
@@ -416,6 +433,21 @@ namespace mtcg.Controllers
             Context.Response.StatusCode = (int)statusCode;
             Context.Response.ContentLength64 = responseBytes.Length;
             Context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
+        }
+
+        /// <summary>
+        /// Returns the list of cards in plain text format
+        /// </summary>
+        /// <param name="cards"></param>
+        /// <returns></returns>
+        private string CreatePlainTextResponse(List<Card> cards)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var card in cards)
+            {
+                sb.AppendLine($"Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}");
+            }
+            return sb.ToString();
         }
 
         /// <summary>

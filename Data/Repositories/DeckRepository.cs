@@ -50,7 +50,6 @@ namespace mtcg.Data.Repositories
         /// <returns></returns>
         public bool ConfigureDeck(int userId, string[] cardIds)
         {
-            Console.WriteLine("In ConfigureDeck:");
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
@@ -62,7 +61,6 @@ namespace mtcg.Data.Repositories
                 // Clear existing deck
                 connection.Execute("DELETE FROM deckCards WHERE ownerId = @OwnerId", new { OwnerId = userId }, transaction);
 
-                Console.WriteLine("Deleted current deck");
                 // Add new cards to the deck
                 foreach (var cardId in cardIds)
                 {
@@ -71,18 +69,16 @@ namespace mtcg.Data.Repositories
                                                     new { CardId = cardId, OwnerId = userId }, transaction);
                     if (count == 0)
                     {
-                        Console.WriteLine("Card did not belong to the user!");
                         transaction.Rollback();
                         return false; // Card does not belong to the user
                     }
+                    // Insert card to the deck
                     connection.Execute("INSERT INTO deckCards (cardId, ownerId) VALUES (@CardId, @OwnerId)",
                                     new { CardId = cardId, OwnerId = userId }, transaction);
-                    Console.WriteLine($"Inserted a card with id={ cardId } to the deck");
                 }
 
                 // Commit transaction
                 transaction.Commit();
-                Console.WriteLine("New deck is ready");
                 return true;
             }
             catch
