@@ -23,16 +23,9 @@ namespace mtcg.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public List<Card> GetDeckByUserId(int userId)
         {
-            Console.WriteLine("In GetDeckByUserId");
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            Console.WriteLine("Will execute query:");
-            // var query = @"
-            //     SELECT c.id as Id, c.name as Name, c.damage as Damage, c.elementType as ElementType, c.isMonster as IsMonster, c.packageId as PackageId, c.ownerId as OwnerId
-            //     FROM cards c
-            //     INNER JOIN deckCards d ON c.id = d.cardId
-            //     WHERE d.ownerId = @OwnerId;";
             var query = @"
                 SELECT cards.*
                 FROM deckCards
@@ -73,6 +66,15 @@ namespace mtcg.Data.Repositories
                 // Add new cards to the deck
                 foreach (var cardId in cardIds)
                 {
+                    // check if card belongs to the user
+                    int count = connection.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM cards WHERE id = @CardId AND ownerId = @OwnerId",
+                                                    new { CardId = cardId, OwnerId = userId }, transaction);
+                    if (count == 0)
+                    {
+                        Console.WriteLine("Card did not belong to the user!");
+                        transaction.Rollback();
+                        return false; // Card does not belong to the user
+                    }
                     connection.Execute("INSERT INTO deckCards (cardId, ownerId) VALUES (@CardId, @OwnerId)",
                                     new { CardId = cardId, OwnerId = userId }, transaction);
                     Console.WriteLine($"Inserted a card with id={ cardId } to the deck");
