@@ -31,6 +31,7 @@ namespace mtcg.Data.Models
         public string? Name { get; set; }
         public double? Damage { get; set; }
         public Element? ElementType { get; set; }
+        public int? IsMonster { get; set; }
         public int? PackageId { get; set; }
         public int? OwnerId { get; set; }
 
@@ -43,8 +44,6 @@ namespace mtcg.Data.Models
             Name = name;
             Damage = damage;
             ElementType = elementType;
-            // set the owner ID to null to show card is not owned by anyone yet
-            // OwnerId = null;
         }
 
         public void AttachToPackage(Package package)

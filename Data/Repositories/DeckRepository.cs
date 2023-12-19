@@ -27,9 +27,20 @@ namespace mtcg.Data.Repositories
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            var query = $"SELECT * FROM { _Table } WHERE ownerId = @UserId";
+            Console.WriteLine("Will execute query:");
+            // var query = @"
+            //     SELECT c.id as Id, c.name as Name, c.damage as Damage, c.elementType as ElementType, c.isMonster as IsMonster, c.packageId as PackageId, c.ownerId as OwnerId
+            //     FROM cards c
+            //     INNER JOIN deckCards d ON c.id = d.cardId
+            //     WHERE d.ownerId = @OwnerId;";
+            var query = @"
+                SELECT cards.*
+                FROM deckCards
+                INNER JOIN cards ON deckCards.cardId = cards.id
+                WHERE deckCards.ownerId = @UserId;";
             var cards = connection.Query<Card>(query, new { UserId = userId }).ToList();
 
+            Console.WriteLine($"Executed query, number of items: {cards.Count }");
             if (cards == null)
             {
                 throw new InvalidOperationException("No cards found for the user.");
