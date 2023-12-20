@@ -17,6 +17,11 @@ namespace mtcg.Data.Repositories
             _dbConnectionManager = dbConnectionManager;
         }
 
+        /// <summary>
+        /// Returns the stats for this user id
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
         public UserStats GetStatsByUserId(int userId)
         {
             using var connection = _dbConnectionManager.GetConnection();
@@ -26,6 +31,10 @@ namespace mtcg.Data.Repositories
             return connection.Query<UserStats>(query, new { UserId = userId }).FirstOrDefault();
         }
 
+        /// <summary>
+        /// Updates the user stats
+        /// </summary>
+        /// <param name="stats"></param>
         public void UpdateStats(UserStats stats)
         {
             using var connection = _dbConnectionManager.GetConnection();
@@ -42,6 +51,10 @@ namespace mtcg.Data.Repositories
             connection.Execute(query, stats);
         }
 
+        /// <summary>
+        /// Creates a new stats record with the user id and default values
+        /// </summary>
+        /// <param name="userId"></param>
         public void CreateStats(int userId)
         {
             using var connection = _dbConnectionManager.GetConnection();
@@ -49,6 +62,18 @@ namespace mtcg.Data.Repositories
 
             var query = $"INSERT INTO { _Table } (userId) VALUES (@UserId)";
             connection.Execute(query, new { UserId = userId });
+        }
+
+        /// <summary>
+        /// Returns the scoreboard
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<Scoreboard> GetScoreboardData()
+        {
+            using var connection = _dbConnectionManager.GetConnection();
+            connection.Open();
+
+            return connection.Query<Scoreboard>("SELECT username, elorating FROM scoreboard;");
         }
     }
 }

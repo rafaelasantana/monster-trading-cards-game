@@ -120,6 +120,9 @@ namespace mtcg.Controllers
                     case "/stats":
                         HandleGetUserStats();
                         break;
+                    case "/scoreboard":
+                        HandleGetScoreboard();
+                        break;
                     default:
                         // Default response
                         SendResponse("Hello, this is the server!", HttpStatusCode.OK);
@@ -462,6 +465,9 @@ namespace mtcg.Controllers
 
         }
 
+        /// <summary>
+        /// Returns the stats for the user as a formatted JSON, or sends an error response
+        /// </summary>
         private void HandleGetUserStats()
         {
             try
@@ -485,6 +491,29 @@ namespace mtcg.Controllers
                 SendResponse(ex.Message, HttpStatusCode.Unauthorized);
             }
 
+        }
+
+        /// <summary>
+        /// Returns the scoreboard as a formatted JSON, or sends an error response
+        /// </summary>
+        private void HandleGetScoreboard()
+        {
+            try
+            {
+                // Validate the token and get the user
+                User user = ValidateTokenAndGetUser();
+
+                // Query the database for the scoreboard
+                var scoreboardData = UserStatsRepository.GetScoreboardData();
+
+                // Send the JSON response
+                SendFormattedJSONResponse(scoreboardData, HttpStatusCode.OK);
+            }
+            catch (Exception ex)
+            {
+                // Handle any exceptions, possibly logging them and sending an error response
+                SendResponse($"Error: {ex.Message}", HttpStatusCode.InternalServerError);
+            }
         }
 
         /// <summary>
