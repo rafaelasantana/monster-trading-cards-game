@@ -16,6 +16,7 @@ namespace mtcg.Controllers
         private readonly TransactionRepository TransactionRepository;
         private readonly CardRepository CardRepository;
         private readonly DeckRepository DeckRepository;
+        private readonly UserStatsRepository UserStatsRepository;
         private readonly SessionManager SessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
@@ -27,6 +28,7 @@ namespace mtcg.Controllers
             TransactionRepository = new TransactionRepository(dbConnectionManager, UserRepository, PackageRepository);
             CardRepository = new CardRepository(dbConnectionManager);
             DeckRepository = new DeckRepository(dbConnectionManager);
+            UserStatsRepository = new UserStatsRepository(dbConnectionManager);
             SessionManager = new SessionManager();
         }
 
@@ -115,6 +117,9 @@ namespace mtcg.Controllers
                     case "/deck":
                         HandleGetDeck();
                         break;
+                    case "/stats":
+                        HandleGetUserStats();
+                        break;
                     default:
                         // Default response
                         SendResponse("Hello, this is the server!", HttpStatusCode.OK);
@@ -150,7 +155,7 @@ namespace mtcg.Controllers
         }
 
         /// <summary>
-        /// Registers a new user with a hashed password, or sends an error response if the user already exists
+        /// Registers a new user, creates a user profile, and user stats, or sends an error response if the user already exists
         /// </summary>
         private void HandleUserRegistration(string json)
         {
@@ -174,6 +179,11 @@ namespace mtcg.Controllers
                     // create a user profile with for this user
                     UserProfile newUserProfile = new UserProfile(newUser.Id, null, null, null);
                     UserProfileRepository.CreateUserProfile(newUserProfile);
+
+                    // create a user stats record
+                    // UserStats newUserStats = new UserStats(newUser.Id);
+                    UserStatsRepository.CreateStats(newUser.Id);
+                    Console.WriteLine("Created new user stats");
 
                     // send success response
                     string successResponse = "User registered successfully!";
@@ -451,6 +461,32 @@ namespace mtcg.Controllers
             }
 
         }
+
+        private void HandleGetUserStats()
+        {
+            try
+            {
+                // Validate the user
+                User user = ValidateTokenAndGetUser();
+
+                // Fetch user stats from the repository
+                UserStats stats = UserStatsRepository.GetStatsByUserId(user.Id);
+                if (stats == null)
+                {
+                    SendResponse("Stats not found.", HttpStatusCode.NotFound);
+                    return;
+                }
+
+                // Return user stats as formattted JSON
+                SendFormattedJSONResponse(stats, HttpStatusCode.OK);
+            }
+            catch (Exception ex)
+            {
+                SendResponse(ex.Message, HttpStatusCode.Unauthorized);
+            }
+
+        }
+
         /// <summary>
         /// Validates the token and returns the associated user, or throws an exception
         /// </summary>
