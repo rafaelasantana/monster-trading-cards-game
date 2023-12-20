@@ -414,6 +414,11 @@ namespace mtcg.Controllers
             }
         }
 
+        /// <summary>
+        /// Updates the user profile or sends an error message
+        /// </summary>
+        /// <param name="json"></param>
+        /// <exception cref="UnauthorizedAccessException"></exception>
         private void HandlePutUserProfile(string json)
         {
             try
@@ -432,11 +437,9 @@ namespace mtcg.Controllers
 
                 // Parse JSON payload to UserProfile object
                 var updatedProfile = JsonConvert.DeserializeObject<UserProfile>(json);
-                Console.WriteLine("Parsed profile from JSON");
 
                 // Update user profile
                 UserProfileRepository.UpdateUserProfile(user.Id, updatedProfile);
-                Console.WriteLine("updated user profile");
 
                 // Send success response
                 SendResponse("User profile updated successfully!", HttpStatusCode.OK);

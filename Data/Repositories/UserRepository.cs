@@ -19,7 +19,6 @@ namespace mtcg.Data.Repositories
         /// <param name="user"></param>
         public void Save(User user)
         {
-            Console.WriteLine("In Save user...");
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
@@ -27,12 +26,10 @@ namespace mtcg.Data.Repositories
             var existingUser = GetByUsername(user.Username);
             if (existingUser == null)
             {
-                Console.WriteLine("Will save new user");
                 SaveNew(user);
             }
             else
             {
-                Console.WriteLine("Will update user");
                 Update(user);
             }
         }

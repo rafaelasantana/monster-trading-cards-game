@@ -44,14 +44,12 @@ namespace mtcg.Data.Repositories
             {
                 // Create a new profile if it doesn't exist
                 CreateUserProfile(new UserProfile(userId, updatedProfile.Name, updatedProfile.Bio, updatedProfile.Image));
-                Console.WriteLine("New user profile created");
             }
             else
             {
                 // Update existing profile
                 var query = $"UPDATE {_Table} SET name = @Name, bio = @Bio, image = @Image WHERE userId = @UserId;";
                 connection.Execute(query, new { updatedProfile.Name, updatedProfile.Bio, updatedProfile.Image, UserId = userId });
-                Console.WriteLine("User profile updated");
             }
         }
 
