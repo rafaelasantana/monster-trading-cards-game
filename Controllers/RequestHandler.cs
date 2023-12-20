@@ -11,6 +11,7 @@ namespace mtcg.Controllers
     {
         private readonly HttpListenerContext Context;
         private readonly UserRepository UserRepository;
+        private readonly UserProfileRepository UserProfileRepository;
         private readonly PackageRepository PackageRepository;
         private readonly TransactionRepository TransactionRepository;
         private readonly CardRepository CardRepository;
@@ -21,6 +22,7 @@ namespace mtcg.Controllers
         {
             Context = context;
             UserRepository = new UserRepository(dbConnectionManager);
+            UserProfileRepository = new UserProfileRepository(dbConnectionManager);
             PackageRepository = new PackageRepository(dbConnectionManager);
             TransactionRepository = new TransactionRepository(dbConnectionManager, UserRepository, PackageRepository);
             CardRepository = new CardRepository(dbConnectionManager);
@@ -98,36 +100,52 @@ namespace mtcg.Controllers
         /// <param name="json"></param>
         private void HandleGET(string json)
         {
-            switch (Context.Request.Url.AbsolutePath)
+            string path = Context.Request.Url.AbsolutePath;
+            if (path.StartsWith("/users/"))
             {
-                case "/cards":
-                    HandleGetCards();
-                    break;
-                case "/deck":
-                    HandleGetDeck();
-                    break;
-                default:
-                    // Default response
-                    SendResponse("Hello, this is the server!", HttpStatusCode.OK);
-                    break;
+                HandleGetUserProfile();
+            }
+            else
+            {
+                switch (path)
+                {
+                    case "/cards":
+                        HandleGetCards();
+                        break;
+                    case "/deck":
+                        HandleGetDeck();
+                        break;
+                    default:
+                        // Default response
+                        SendResponse("Hello, this is the server!", HttpStatusCode.OK);
+                        break;
+                }
             }
         }
 
         /// <summary>
         /// Handles PUT requests
-        /// </summary>
+        /// </summary>s
         /// <param name="json"></param>
         private void HandlePUT(string json)
         {
-            switch (Context.Request.Url.AbsolutePath)
+            string path = Context.Request.Url.AbsolutePath;
+            if (path.StartsWith("/users/"))
             {
-                case "/deck":
-                    HandleConfigureDeck(json);
-                    break;
-                default:
-                    // Default response
-                    SendResponse("Hello, this is the server!", HttpStatusCode.OK);
-                    break;
+                HandlePutUserProfile(json);
+            }
+            else
+            {
+                switch (path)
+                {
+                    case "/deck":
+                        HandleConfigureDeck(json);
+                        break;
+                    default:
+                        // Default response
+                        SendResponse("Hello, this is the server!", HttpStatusCode.OK);
+                        break;
+                }
             }
         }
 
@@ -152,6 +170,10 @@ namespace mtcg.Controllers
                 {
                     // save new user
                     UserRepository.Save(newUser);
+
+                    // create a user profile with for this user
+                    UserProfile newUserProfile = new UserProfile(newUser.Id, null, null, null);
+                    UserProfileRepository.CreateUserProfile(newUserProfile);
 
                     // send success response
                     string successResponse = "User registered successfully!";
@@ -356,6 +378,76 @@ namespace mtcg.Controllers
             }
         }
 
+        /// <summary>
+        /// Fetches the user profile data and returns it as a formatted JSON, or sends an error response
+        /// </summary>
+        private void HandleGetUserProfile()
+        {
+            try
+            {
+                // Validate the user tokens
+                User user = ValidateTokenAndGetUser();
+
+                // Extract username from the URL
+                string urlUsername = Context.Request.Url.AbsolutePath.Split('/')[2]; // Assumes URL is /users/{username}
+
+                // Check if the username matches the one from the token
+                if (user.Username != urlUsername)
+                {
+                    throw new Exception("Access denied.");
+                }
+
+                // Fetch user profile data
+                UserProfile userProfile = UserProfileRepository.GetUserProfile(user.Id);
+                if (userProfile == null)
+                {
+                    SendResponse("User profile not found.", HttpStatusCode.NotFound);
+                    return;
+                }
+
+                // Send the user profile data
+                SendFormattedJSONResponse(userProfile, HttpStatusCode.OK);
+            }
+            catch (Exception ex)
+            {
+                SendResponse(ex.Message, HttpStatusCode.Unauthorized);
+            }
+        }
+
+        private void HandlePutUserProfile(string json)
+        {
+            try
+            {
+                // Validate the user tokens
+                User user = ValidateTokenAndGetUser();
+
+                // Extract username from the URL
+                string urlUsername = Context.Request.Url.AbsolutePath.Split('/')[2]; // Assumes URL is /users/{username}
+
+                // Check if the username matches the one from the token
+                if (user.Username != urlUsername)
+                {
+                    throw new UnauthorizedAccessException("You are not authorized to update this profile.");
+                }
+
+                // Parse JSON payload to UserProfile object
+                var updatedProfile = JsonConvert.DeserializeObject<UserProfile>(json);
+                Console.WriteLine("Parsed profile from JSON");
+
+                // Update user profile
+                UserProfileRepository.UpdateUserProfile(user.Id, updatedProfile);
+                Console.WriteLine("updated user profile");
+
+                // Send success response
+                SendResponse("User profile updated successfully!", HttpStatusCode.OK);
+
+            }
+            catch (Exception ex)
+            {
+                SendResponse(ex.Message, HttpStatusCode.BadRequest);
+            }
+
+        }
         /// <summary>
         /// Validates the token and returns the associated user, or throws an exception
         /// </summary>

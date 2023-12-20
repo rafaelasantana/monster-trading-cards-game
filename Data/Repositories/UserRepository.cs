@@ -60,7 +60,6 @@ namespace mtcg.Data.Repositories
             if (generatedId > 0)
             {
                 // save generated Id to the object
-                // todo is this necessary?
                 user.Id = generatedId;
             }
             else throw new InvalidOperationException("Failed to insert the new user.");
