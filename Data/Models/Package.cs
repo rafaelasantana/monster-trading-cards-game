@@ -7,7 +7,6 @@ namespace mtcg.Data.Models
         public int Id { get; set; }
         public int Price { get; set; }
         public int? OwnerId  { get; set; }
-        
         private List<Card> Cards;
 
         public Package()
@@ -18,6 +17,7 @@ namespace mtcg.Data.Models
         /// <param name="json"></param>
         public Package(string json)
         {
+            Console.WriteLine("Creating package from json...");
             // set Id to 0 (will be updated once saved to the database)
             Id = 0;
             // set OwnerId to null
@@ -34,39 +34,47 @@ namespace mtcg.Data.Models
 
         private void AddCardsFromJson(string json)
         {
+            Console.WriteLine("In AddCardsFromJson...");
+            Console.WriteLine("received JSON:");
+            Console.WriteLine(json);
             // initialize list of cards
             Cards = [];
 
-            // get cards from request
             JArray cardArray = JArray.Parse(json);
-
-            foreach(var cardData in cardArray)
+            foreach (var cardData in cardArray)
             {
-                // extract card properties
-                string id = cardData["Id"]!.ToString();
-                string name = cardData["Name"]!.ToString();
+                Console.WriteLine("Checking json card data");
+                string id = cardData["Id"].ToString();
+                Console.WriteLine($"Id: { id }");
+                string name = cardData["Name"].ToString();
+                Console.WriteLine($"name: { name }");
                 double damage = Convert.ToDouble(cardData["Damage"]);
+                Console.WriteLine($"damage: { damage }");
 
-                // determine element type based on name
                 Element elementType = GetElementTypeFromName(name);
 
-                // create card based on the name
+                Console.WriteLine("Parsed card.");
+
                 Card card;
 
                 if (name.Contains("Spell"))
                 {
+                    // card = new SpellCard(id, name, damage, (Element)Enum.Parse(typeof(Element), elementType), GetSpellTypeFromName(name));
                     // create a spell card
                     SpellType spellType = GetSpellTypeFromName(name);
                     card = new SpellCard(id, name, damage, elementType, spellType);
+                    Console.WriteLine("created new spell card");
                 }
                 else {
+                    // card = new MonsterCard(id, name, damage, (Element)Enum.Parse(typeof(Element), elementType), GetMonsterTypeFromName(name));
+                    Console.WriteLine("created new monster card");
                     // create a monster card
                     MonsterType monsterType = GetMonsterTypeFromName(name);
                     card = new MonsterCard(id, name, damage, elementType, monsterType);
+                    Console.WriteLine("created new monster card");
                 }
-
-                // add card to this package
                 Cards.Add(card);
+                Console.WriteLine("Added card to package");
             }
         }
 

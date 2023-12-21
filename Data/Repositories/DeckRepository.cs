@@ -35,7 +35,6 @@ namespace mtcg.Data.Repositories
                 WHERE deckCards.ownerId = @UserId;";
             var cards = connection.Query<Card>(query, new { UserId = userId }).ToList();
 
-            Console.WriteLine($"Executed query, number of items: {cards.Count }");
             if (cards == null)
             {
                 throw new InvalidOperationException("No cards found for the user.");

@@ -25,13 +25,19 @@ namespace mtcg.Data.Models
         NormalSpell
     }
 
+    public enum CardType
+    {
+        Monster,
+        Spell
+    }
+
     public class Card
     {
-        public string? Id { get; set; }
-        public string? Name { get; set; }
-        public double? Damage { get; set; }
-        public Element? ElementType { get; set; }
-        public int? IsMonster { get; set; }
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public double Damage { get; set; }
+        public Element ElementType { get; set; }
+        public CardType Type { get; set; }
         public int? PackageId { get; set; }
         public int? OwnerId { get; set; }
 

@@ -28,7 +28,7 @@ namespace mtcg.Data.Repositories
 
             var query = @"
                 SELECT t.id as Id, t.ownerId as OwnerId, t.cardId as CardId,
-                    c.name as CardName, c.damage as Damage, c.elementType as ElementType,
+                    c.name as CardName, c.damage as Damage, c.elementType::TEXT as ElementType,
                     t.requestedType as RequestedType, t.minDamage as MinDamage, t.status as Status
                 FROM tradings t
                 INNER JOIN cards c ON t.cardId = c.id

@@ -251,8 +251,10 @@ namespace mtcg.Controllers
         /// <param name="json"></param>
         private void HandlePackageCreation(string json)
         {
+            Console.WriteLine("In HandlePackageCreation");
             // extract token from header
             string? token = ExtractAuthTokenFromHeader();
+            Console.WriteLine("Extracted token");
 
             // check if the token belongs to the admin
             if (!SessionManager.IsAdmin(token))
@@ -265,10 +267,13 @@ namespace mtcg.Controllers
 
             try
             {
+                Console.WriteLine("Will try to create package from json");
                 // create new package based on json data
                 Package package = new(json);
+                Console.WriteLine("Created package object in requesthandler");
                 // save package to the database
                 PackageRepository.Save(package);
+                Console.WriteLine("Saved package in requesthandler");
                 // send success response
                 string successResponse = "Package created successfully!";
                 SendResponse(successResponse, HttpStatusCode.OK);

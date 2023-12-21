@@ -124,7 +124,6 @@ namespace mtcg.Data.Repositories
 
             // get this package's cards
             List<Card> cards = package.GetCards();
-
             // check if any cards already exist on the database
             foreach(Card card in cards)
             {
@@ -168,10 +167,11 @@ namespace mtcg.Data.Repositories
                 // Update the OwnerId of the package
                 var packageUpdateQuery = "UPDATE packages SET OwnerId = @OwnerId WHERE Id = @PackageId";
                 connection.Execute(packageUpdateQuery, new { OwnerId = user.Id, PackageId = package.Id });
-
+                Console.WriteLine("updated packages with user id");
                 // Update the owner of all cards in the package
                 var cardUpdateQuery = "UPDATE cards SET ownerId = @OwnerId WHERE PackageId = @PackageId";
                 connection.Execute(cardUpdateQuery, new { OwnerId = user.Id, PackageId = package.Id });
+                Console.WriteLine("updated cards with user id");
             }
             catch (Exception ex)
             {
