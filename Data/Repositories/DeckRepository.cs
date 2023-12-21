@@ -1,6 +1,8 @@
 using System;
 using Dapper;
 using mtcg.Data.Models;
+using System.Data;
+
 
 namespace mtcg.Data.Repositories
 {
@@ -42,12 +44,6 @@ namespace mtcg.Data.Repositories
             return cards;
         }
 
-        /// <summary>
-        /// Configures the deck for the user according to the requested card ids
-        /// </summary>
-        /// <param name="userId"></param>
-        /// <param name="cardIds"></param>
-        /// <returns></returns>
         public bool ConfigureDeck(int userId, string[] cardIds)
         {
             using var connection = _dbConnectionManager.GetConnection();
@@ -64,11 +60,23 @@ namespace mtcg.Data.Repositories
                 // Add new cards to the deck
                 foreach (var cardId in cardIds)
                 {
+                    // Check if card is in the store (trading)
+                    var isTrading = connection.QueryFirstOrDefault<bool>(
+                        "SELECT COUNT(1) > 0 FROM tradings WHERE cardId = @CardId AND status = 'open'",
+                        new { CardId = cardId }, transaction);
+                    if (isTrading)
+                    {
+                        throw new InvalidOperationException("Card is open for trading and cannot be added to the deck.");
+                        transaction.Rollback();
+                        return false; // Card is in trading, cannot be added to the deck
+                    }
+
                     // check if card belongs to the user
                     int count = connection.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM cards WHERE id = @CardId AND ownerId = @OwnerId",
                                                     new { CardId = cardId, OwnerId = userId }, transaction);
                     if (count == 0)
                     {
+                        throw new InvalidOperationException("Card does not belong to the user.");
                         transaction.Rollback();
                         return false; // Card does not belong to the user
                     }
@@ -81,10 +89,11 @@ namespace mtcg.Data.Repositories
                 transaction.Commit();
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
                 // Rollback transaction on error
                 transaction.Rollback();
+                throw new InvalidOperationException(ex.Message);
                 return false;
             }
         }

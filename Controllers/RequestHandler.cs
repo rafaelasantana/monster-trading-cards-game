@@ -17,6 +17,7 @@ namespace mtcg.Controllers
         private readonly CardRepository CardRepository;
         private readonly DeckRepository DeckRepository;
         private readonly UserStatsRepository UserStatsRepository;
+        private readonly TradingRepository TradingRepository;
         private readonly SessionManager SessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
@@ -29,6 +30,7 @@ namespace mtcg.Controllers
             CardRepository = new CardRepository(dbConnectionManager);
             DeckRepository = new DeckRepository(dbConnectionManager);
             UserStatsRepository = new UserStatsRepository(dbConnectionManager);
+            TradingRepository = new TradingRepository(dbConnectionManager);
             SessionManager = new SessionManager();
         }
 
@@ -48,7 +50,7 @@ namespace mtcg.Controllers
                 }
                 else if (Context.Request.HttpMethod == "GET")
                 {
-                    HandleGET(json);
+                    HandleGET();
                 }
                 else if (Context.Request.HttpMethod == "PUT")
                 {
@@ -89,6 +91,9 @@ namespace mtcg.Controllers
                 case "/transactions/packages":
                     HandlePackagePurchase();
                     break;
+                case "/tradings":
+                    HandleCreateTradingDeal(json);
+                    break;
                 default:
                     // Default response
                     SendResponse("Hello, this is the server!", HttpStatusCode.OK);
@@ -100,7 +105,7 @@ namespace mtcg.Controllers
         /// Handles GET requests
         /// </summary>
         /// <param name="json"></param>
-        private void HandleGET(string json)
+        private void HandleGET()
         {
             string path = Context.Request.Url.AbsolutePath;
             if (path.StartsWith("/users/"))
@@ -122,6 +127,9 @@ namespace mtcg.Controllers
                         break;
                     case "/scoreboard":
                         HandleGetScoreboard();
+                        break;
+                    case "/tradings":
+                        HandleGetTradingDeals();
                         break;
                     default:
                         // Default response
@@ -511,8 +519,69 @@ namespace mtcg.Controllers
             }
             catch (Exception ex)
             {
-                // Handle any exceptions, possibly logging them and sending an error response
-                SendResponse($"Error: {ex.Message}", HttpStatusCode.InternalServerError);
+                SendResponse($"Error: {ex.Message}", HttpStatusCode.Unauthorized);
+            }
+        }
+
+        /// <summary>
+        /// Returns the open tradings as a formatted JSON, or sends an error response
+        /// </summary>
+        private void HandleGetTradingDeals()
+        {
+            try
+            {
+                // Validate user token
+                User user = ValidateTokenAndGetUser();
+
+                // Get trading deals from the store
+                var trades = TradingRepository.GetAllOffers();
+
+                // Check if there are open tradings
+                if (trades.Count() == 0)
+                {
+                    SendResponse("There are no open tradings.", HttpStatusCode.OK);
+                }
+                // Return open trading deals as formatted JSON
+                else SendFormattedJSONResponse(trades, HttpStatusCode.OK);
+            }
+            catch (Exception ex)
+            {
+                SendResponse($"Error: {ex.Message}", HttpStatusCode.Unauthorized);
+            }
+        }
+
+        /// <summary>
+        /// Checks if the offer is valid and pushes it to the trading store, and sends an error response
+        /// </summary>
+        /// <param name="json"></param>
+        private void HandleCreateTradingDeal(string json)
+        {
+            try
+            {
+                // Validate user token
+                User user = ValidateTokenAndGetUser();
+
+                // Deserialize JSON to dynamic object to access properties
+                dynamic tradeOfferJson = JsonConvert.DeserializeObject<dynamic>(json);
+
+                // Construct StoreCard object with expected properties
+                var tradeOffer = new TradingOffer
+                {
+                    Id = tradeOfferJson.Id,
+                    OwnerId = user.Id,
+                    CardId = tradeOfferJson.CardToTrade, // Assuming this is the actual card ID to be traded
+                    RequestedType = tradeOfferJson.Type,
+                    MinDamage = tradeOfferJson.MinimumDamage
+                };
+
+                // Create trading offer
+                TradingRepository.CreateOffer(tradeOffer);
+
+                SendResponse("Trading deal created successfully!", HttpStatusCode.Created);
+            }
+            catch (Exception ex)
+            {
+                SendResponse($"Error: {ex.Message}", HttpStatusCode.BadRequest);
             }
         }
 
