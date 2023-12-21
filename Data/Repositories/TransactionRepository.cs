@@ -8,8 +8,8 @@ namespace mtcg.Data.Repositories
         private readonly UserRepository _userRepository;
         private readonly PackageRepository _packageRepository;
         private readonly DbConnectionManager _dbConnectionManager;
-        private readonly string _Table = "transactions";
-        private readonly string _Fields = "id, userId, packageId, price";
+        private readonly string _table = "transactions";
+        private readonly string _fields = "id, userId, packageId, price";
         public TransactionRepository(DbConnectionManager dbConnectionManager, UserRepository userRepository, PackageRepository packageRepository)
         {
             _dbConnectionManager = dbConnectionManager;
@@ -27,7 +27,7 @@ namespace mtcg.Data.Repositories
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
             // Save the transaction to the database
-            var query = $"INSERT INTO {_Table} (userId, packageId, price) VALUES (@UserId, @PackageId, @Price)";
+            var query = $"INSERT INTO {_table} (userId, packageId, price) VALUES (@UserId, @PackageId, @Price)";
             connection.Execute(query, transaction);
         }
 

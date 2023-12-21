@@ -9,29 +9,29 @@ namespace mtcg.Controllers
 {
     public class RequestHandler
     {
-        private readonly HttpListenerContext Context;
-        private readonly UserRepository UserRepository;
-        private readonly UserProfileRepository UserProfileRepository;
-        private readonly PackageRepository PackageRepository;
-        private readonly TransactionRepository TransactionRepository;
-        private readonly CardRepository CardRepository;
-        private readonly DeckRepository DeckRepository;
-        private readonly UserStatsRepository UserStatsRepository;
-        private readonly TradingRepository TradingRepository;
-        private readonly SessionManager SessionManager;
+        private readonly HttpListenerContext _context;
+        private readonly UserRepository _userRepository;
+        private readonly UserProfileRepository _userProfileRepository;
+        private readonly PackageRepository _packageRepository;
+        private readonly TransactionRepository _transactionRepository;
+        private readonly CardRepository _cardRepository;
+        private readonly DeckRepository _deckRepository;
+        private readonly UserStatsRepository _userStatsRepository;
+        private readonly TradingRepository _tradingRepository;
+        private readonly SessionManager _sessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
         {
-            Context = context;
-            UserRepository = new UserRepository(dbConnectionManager);
-            UserProfileRepository = new UserProfileRepository(dbConnectionManager);
-            PackageRepository = new PackageRepository(dbConnectionManager);
-            TransactionRepository = new TransactionRepository(dbConnectionManager, UserRepository, PackageRepository);
-            CardRepository = new CardRepository(dbConnectionManager);
-            DeckRepository = new DeckRepository(dbConnectionManager);
-            UserStatsRepository = new UserStatsRepository(dbConnectionManager);
-            TradingRepository = new TradingRepository(dbConnectionManager);
-            SessionManager = new SessionManager();
+            _context = context;
+            _userRepository = new UserRepository(dbConnectionManager);
+            _userProfileRepository = new UserProfileRepository(dbConnectionManager);
+            _packageRepository = new PackageRepository(dbConnectionManager);
+            _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
+            _cardRepository = new CardRepository(dbConnectionManager);
+            _deckRepository = new DeckRepository(dbConnectionManager);
+            _userStatsRepository = new UserStatsRepository(dbConnectionManager);
+            _tradingRepository = new TradingRepository(dbConnectionManager);
+            _sessionManager = new SessionManager();
         }
 
         /// <summary>
@@ -41,18 +41,18 @@ namespace mtcg.Controllers
         {
             try
             {
-                using var reader = new StreamReader(Context.Request.InputStream);
+                using var reader = new StreamReader(_context.Request.InputStream);
                 string json = reader.ReadToEnd();
 
-                if (Context.Request.HttpMethod == "POST")
+                if (_context.Request.HttpMethod == "POST")
                 {
                     HandlePOST(json);
                 }
-                else if (Context.Request.HttpMethod == "GET")
+                else if (_context.Request.HttpMethod == "GET")
                 {
                     HandleGET();
                 }
-                else if (Context.Request.HttpMethod == "PUT")
+                else if (_context.Request.HttpMethod == "PUT")
                 {
                     HandlePUT(json);
                 }
@@ -68,7 +68,7 @@ namespace mtcg.Controllers
                 SendResponse(errorResponse, HttpStatusCode.InternalServerError);
             }
 
-            Context.Response.Close();
+            _context.Response.Close();
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace mtcg.Controllers
         /// <param name="json"></param>
         private void HandlePOST(string json)
         {
-            switch (Context.Request.Url.AbsolutePath)
+            switch (_context.Request.Url.AbsolutePath)
             {
                 case "/users":
                     HandleUserRegistration(json);
@@ -107,7 +107,7 @@ namespace mtcg.Controllers
         /// <param name="json"></param>
         private void HandleGET()
         {
-            string path = Context.Request.Url.AbsolutePath;
+            string path = _context.Request.Url.AbsolutePath;
             if (path.StartsWith("/users/"))
             {
                 HandleGetUserProfile();
@@ -145,7 +145,7 @@ namespace mtcg.Controllers
         /// <param name="json"></param>
         private void HandlePUT(string json)
         {
-            string path = Context.Request.Url.AbsolutePath;
+            string path = _context.Request.Url.AbsolutePath;
             if (path.StartsWith("/users/"))
             {
                 HandlePutUserProfile(json);
@@ -176,7 +176,7 @@ namespace mtcg.Controllers
                 User? newUser = ParseUserFromJson(json);
 
                 // check if username is already taken
-                if (UserRepository.GetByUsername(newUser.Username) != null)
+                if (_userRepository.GetByUsername(newUser.Username) != null)
                 {
                     // send error response
                     string errorResponse = "Username already exists!";
@@ -185,15 +185,15 @@ namespace mtcg.Controllers
                 else
                 {
                     // save new user
-                    UserRepository.Save(newUser);
+                    _userRepository.Save(newUser);
 
                     // create a user profile with for this user
                     UserProfile newUserProfile = new UserProfile(newUser.Id, null, null, null);
-                    UserProfileRepository.CreateUserProfile(newUserProfile);
+                    _userProfileRepository.CreateUserProfile(newUserProfile);
 
                     // create a user stats record
                     // UserStats newUserStats = new UserStats(newUser.Id);
-                    UserStatsRepository.CreateStats(newUser.Id);
+                    _userStatsRepository.CreateStats(newUser.Id);
                     Console.WriteLine("Created new user stats");
 
                     // send success response
@@ -219,13 +219,13 @@ namespace mtcg.Controllers
                 User? loginUser = ParseUserFromJson(json);
 
                 // get user's data from the database
-                User? registeredUser = UserRepository.GetByUsername(loginUser.Username);
+                User? registeredUser = _userRepository.GetByUsername(loginUser.Username);
 
                 // check if user exists and password matches
                 if (registeredUser != null && BCrypt.Net.BCrypt.Verify(loginUser.Password, registeredUser.Password))
                 {
                     // create a token for this session
-                    SessionManager.CreateSessionToken(registeredUser.Username);
+                    _sessionManager.CreateSessionToken(registeredUser.Username);
                     // send success response
                     string successResponse = "Login successful!";
                     SendResponse(successResponse, HttpStatusCode.OK);
@@ -255,7 +255,7 @@ namespace mtcg.Controllers
             string? token = ExtractAuthTokenFromHeader();
 
             // check if the token belongs to the admin
-            if (!SessionManager.IsAdmin(token))
+            if (!_sessionManager.IsAdmin(token))
             {
                 // send error response
                 string errorResponse = "Unauthorized: Admin access required.";
@@ -268,7 +268,7 @@ namespace mtcg.Controllers
                 // create new package based on json data
                 Package package = new(json);
                 // save package to the database
-                PackageRepository.Save(package);
+                _packageRepository.Save(package);
                 // send success response
                 string successResponse = "Package created successfully!";
                 SendResponse(successResponse, HttpStatusCode.OK);
@@ -290,7 +290,7 @@ namespace mtcg.Controllers
             {
                 User user = ValidateTokenAndGetUser();
 
-                if (TransactionRepository.PurchasePackage(user, out string errorMessage))
+                if (_transactionRepository.PurchasePackage(user, out string errorMessage))
                 {
                     SendResponse("Package purchased successfully!", HttpStatusCode.OK);
                 }
@@ -313,7 +313,7 @@ namespace mtcg.Controllers
             try
             {
                 User user = ValidateTokenAndGetUser();
-                var cards = CardRepository.GetCardsByUserId(user.Id);
+                var cards = _cardRepository.GetCardsByUserId(user.Id);
 
                 if (cards.Count == 0)
                 {
@@ -336,7 +336,7 @@ namespace mtcg.Controllers
             try
             {
                 User user = ValidateTokenAndGetUser();
-                var deck = DeckRepository.GetDeckByUserId(user.Id);
+                var deck = _deckRepository.GetDeckByUserId(user.Id);
                 if (deck.Count == 0)
                 {
                     SendResponse("Your deck is empty.", HttpStatusCode.OK);
@@ -344,7 +344,7 @@ namespace mtcg.Controllers
                 }
 
                 // Check if format=plain is requested
-                string format = Context.Request.QueryString["format"];
+                string format = _context.Request.QueryString["format"];
                 if (format == "plain")
                 {
                     string plainResponse = CreatePlainTextResponse(deck);
@@ -382,7 +382,7 @@ namespace mtcg.Controllers
                 }
 
                 // Validate and configure the deck
-                bool isDeckConfigured = DeckRepository.ConfigureDeck(user.Id, cardIds);
+                bool isDeckConfigured = _deckRepository.ConfigureDeck(user.Id, cardIds);
                 if (isDeckConfigured)
                 {
                     SendResponse("Deck successfully configured.", HttpStatusCode.OK);
@@ -410,7 +410,7 @@ namespace mtcg.Controllers
                 User user = ValidateTokenAndGetUser();
 
                 // Extract username from the URL
-                string urlUsername = Context.Request.Url.AbsolutePath.Split('/')[2]; // Assumes URL is /users/{username}
+                string urlUsername = _context.Request.Url.AbsolutePath.Split('/')[2]; // Assumes URL is /users/{username}
 
                 // Check if the username matches the one from the token
                 if (user.Username != urlUsername)
@@ -419,7 +419,7 @@ namespace mtcg.Controllers
                 }
 
                 // Fetch user profile data
-                UserProfile userProfile = UserProfileRepository.GetUserProfile(user.Id);
+                UserProfile userProfile = _userProfileRepository.GetUserProfile(user.Id);
                 if (userProfile == null)
                 {
                     SendResponse("User profile not found.", HttpStatusCode.NotFound);
@@ -448,7 +448,7 @@ namespace mtcg.Controllers
                 User user = ValidateTokenAndGetUser();
 
                 // Extract username from the URL
-                string urlUsername = Context.Request.Url.AbsolutePath.Split('/')[2]; // Assumes URL is /users/{username}
+                string urlUsername = _context.Request.Url.AbsolutePath.Split('/')[2]; // Assumes URL is /users/{username}
 
                 // Check if the username matches the one from the token
                 if (user.Username != urlUsername)
@@ -460,7 +460,7 @@ namespace mtcg.Controllers
                 var updatedProfile = JsonConvert.DeserializeObject<UserProfile>(json);
 
                 // Update user profile
-                UserProfileRepository.UpdateUserProfile(user.Id, updatedProfile);
+                _userProfileRepository.UpdateUserProfile(user.Id, updatedProfile);
 
                 // Send success response
                 SendResponse("User profile updated successfully!", HttpStatusCode.OK);
@@ -484,7 +484,7 @@ namespace mtcg.Controllers
                 User user = ValidateTokenAndGetUser();
 
                 // Fetch user stats from the repository
-                UserStats stats = UserStatsRepository.GetStatsByUserId(user.Id);
+                UserStats stats = _userStatsRepository.GetStatsByUserId(user.Id);
                 if (stats == null)
                 {
                     SendResponse("Stats not found.", HttpStatusCode.NotFound);
@@ -512,7 +512,7 @@ namespace mtcg.Controllers
                 User user = ValidateTokenAndGetUser();
 
                 // Query the database for the scoreboard
-                var scoreboardData = UserStatsRepository.GetScoreboardData();
+                var scoreboardData = _userStatsRepository.GetScoreboardData();
 
                 // Send the JSON response
                 SendFormattedJSONResponse(scoreboardData, HttpStatusCode.OK);
@@ -534,7 +534,7 @@ namespace mtcg.Controllers
                 User user = ValidateTokenAndGetUser();
 
                 // Get trading deals from the store
-                var trades = TradingRepository.GetAllOffers();
+                var trades = _tradingRepository.GetAllOffers();
 
                 // Check if there are open tradings
                 if (trades.Count() == 0)
@@ -575,7 +575,7 @@ namespace mtcg.Controllers
                 };
 
                 // Create trading offer
-                TradingRepository.CreateOffer(tradeOffer);
+                _tradingRepository.CreateOffer(tradeOffer);
 
                 SendResponse("Trading deal created successfully!", HttpStatusCode.Created);
             }
@@ -593,13 +593,13 @@ namespace mtcg.Controllers
         private User ValidateTokenAndGetUser()
         {
             string? token = ExtractAuthTokenFromHeader();
-            string? username = SessionManager.GetUserFromToken(token);
+            string? username = _sessionManager.GetUserFromToken(token);
             if (username == null)
             {
                 throw new InvalidOperationException("Invalid or expired token.");
             }
 
-            User? user = UserRepository.GetByUsername(username);
+            User? user = _userRepository.GetByUsername(username);
             if (user == null)
             {
                 throw new InvalidOperationException("User not found.");
@@ -616,7 +616,7 @@ namespace mtcg.Controllers
             string? authToken = null;
 
             // extract the Authorization header
-            string? authHeader = Context.Request.Headers["Authorization"];
+            string? authHeader = _context.Request.Headers["Authorization"];
 
             // check if Authorization header is present in the request
             if(!string.IsNullOrEmpty(authHeader))
@@ -642,10 +642,10 @@ namespace mtcg.Controllers
         private void SendResponse(string responseString, HttpStatusCode statusCode)
         {
             byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(responseString);
-            Context.Response.StatusCode = (int)statusCode;
-            Context.Response.ContentType = "text/plain";
-            Context.Response.ContentLength64 = responseBytes.Length;
-            Context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
+            _context.Response.StatusCode = (int)statusCode;
+            _context.Response.ContentType = "text/plain";
+            _context.Response.ContentLength64 = responseBytes.Length;
+            _context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
         }
 
         /// <summary>
@@ -658,10 +658,10 @@ namespace mtcg.Controllers
             string jsonResponse = JsonConvert.SerializeObject(data, Formatting.Indented);
             byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(jsonResponse);
 
-            Context.Response.ContentType = "application/json";
-            Context.Response.StatusCode = (int)statusCode;
-            Context.Response.ContentLength64 = responseBytes.Length;
-            Context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
+            _context.Response.ContentType = "application/json";
+            _context.Response.StatusCode = (int)statusCode;
+            _context.Response.ContentLength64 = responseBytes.Length;
+            _context.Response.OutputStream.Write(responseBytes, 0, responseBytes.Length);
         }
 
         /// <summary>

@@ -8,7 +8,6 @@ namespace mtcg.Data.Models
         public string Username { get; set; }
         public string Password { get; set; }
         public int Coins { get; set;}
-        // public List<Card> Stack { get; set; }
 
         /// <summary>
         /// Parameterless default constructor

@@ -9,8 +9,8 @@ namespace mtcg.Data.Repositories
     public class UserStatsRepository
     {
         private readonly DbConnectionManager _dbConnectionManager;
-        private readonly string _Table = "userStats";
-        private readonly string _Fields = "userId, eloRating, wins, losses, totalGamesPlayed";
+        private readonly string _table = "userStats";
+        private readonly string _fields = "userId, eloRating, wins, losses, totalGamesPlayed";
 
         public UserStatsRepository(DbConnectionManager dbConnectionManager)
         {
@@ -27,7 +27,7 @@ namespace mtcg.Data.Repositories
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            var query = $"SELECT * FROM { _Table } WHERE userId = @UserId";
+            var query = $"SELECT * FROM { _table } WHERE userId = @UserId";
             return connection.Query<UserStats>(query, new { UserId = userId }).FirstOrDefault();
         }
 
@@ -41,7 +41,7 @@ namespace mtcg.Data.Repositories
             connection.Open();
 
             var query = $@"
-                UPDATE { _Table }
+                UPDATE { _table }
                 SET eloRating = @EloRating,
                     wins = @Wins,
                     losses = @Losses,
@@ -60,7 +60,7 @@ namespace mtcg.Data.Repositories
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            var query = $"INSERT INTO { _Table } (userId) VALUES (@UserId)";
+            var query = $"INSERT INTO { _table } (userId) VALUES (@UserId)";
             connection.Execute(query, new { UserId = userId });
         }
 

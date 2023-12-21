@@ -9,8 +9,8 @@ namespace mtcg.Data.Repositories
     public class DeckRepository
     {
         private readonly DbConnectionManager _dbConnectionManager;
-        private readonly string _Table = "deckCards";
-        private readonly string _Fields = "id, cardId, ownerId";
+        private readonly string _table = "deckCards";
+        private readonly string _fields = "id, cardId, ownerId";
 
         public DeckRepository(DbConnectionManager dbConnectionManager)
         {
@@ -54,7 +54,7 @@ namespace mtcg.Data.Repositories
             try
             {
                 // Clear existing deck
-                connection.Execute("DELETE FROM deckCards WHERE ownerId = @OwnerId", new { OwnerId = userId }, transaction);
+                connection.Execute($"DELETE FROM { _table } WHERE ownerId = @OwnerId", new { OwnerId = userId }, transaction);
 
                 // Add new cards to the deck
                 foreach (var cardId in cardIds)
@@ -80,7 +80,7 @@ namespace mtcg.Data.Repositories
                         return false; // Card does not belong to the user
                     }
                     // Insert card to the deck
-                    connection.Execute("INSERT INTO deckCards (cardId, ownerId) VALUES (@CardId, @OwnerId)",
+                    connection.Execute($"INSERT INTO { _table } (cardId, ownerId) VALUES (@CardId, @OwnerId)",
                                     new { CardId = cardId, OwnerId = userId }, transaction);
                 }
 

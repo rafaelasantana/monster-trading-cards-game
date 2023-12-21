@@ -7,8 +7,8 @@ namespace mtcg.Data.Repositories
     public class CardRepository
     {
         private readonly DbConnectionManager _dbConnectionManager;
-        private readonly string _Table = "cards";
-        private readonly string _Fields = "id, name, damage, elementType, cardType, packageId, ownerId";
+        private readonly string _table = "cards";
+        private readonly string _fields = "id, name, damage, elementType, cardType, packageId, ownerId";
 
         public CardRepository(DbConnectionManager dbConnectionManager)
         {
@@ -24,14 +24,17 @@ namespace mtcg.Data.Repositories
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            int count = connection.QueryFirstOrDefault<int>($"SELECT COUNT(*) FROM {_Table} WHERE id = @Id", new { card.Id });
+            // check if card exists on the database
+            int count = connection.QueryFirstOrDefault<int>($"SELECT COUNT(*) FROM {_table} WHERE id = @Id", new { card.Id });
             if (count == 0)
             {
-                var query = $"INSERT INTO {_Table} ({_Fields}) VALUES (@Id, @Name, @Damage, @ElementType::ElementType, @CardType::CardType, @PackageId, @OwnerId)";
+                // save new card
+                var query = $"INSERT INTO {_table} ({_fields}) VALUES (@Id, @Name, @Damage, @ElementType::ElementType, @CardType::CardType, @PackageId, @OwnerId)";
                 connection.Execute(query, card);
             }
             else
             {
+                // update card
                 Update(card);
             }
         }
@@ -46,7 +49,7 @@ namespace mtcg.Data.Repositories
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            var query = $"UPDATE {_Table} SET name=@Name, damage=@Damage, elementType=@ElementType::ElementType, cardType=@CardType::CardType, packageId=@PackageId, ownerId=@OwnerId WHERE id=@Id";
+            var query = $"UPDATE {_table} SET name=@Name, damage=@Damage, elementType=@ElementType::ElementType, cardType=@CardType::CardType, packageId=@PackageId, ownerId=@OwnerId WHERE id=@Id";
             int rowsAffected = connection.Execute(query, card);
 
             if (rowsAffected == 0)

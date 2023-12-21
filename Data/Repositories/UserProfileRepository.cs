@@ -6,8 +6,8 @@ namespace mtcg.Data.Repositories
     public class UserProfileRepository
     {
         private readonly DbConnectionManager _dbConnectionManager;
-        private readonly string _Table = "userProfiles";
-        private readonly string _Fields = "userId, name, bio, image";
+        private readonly string _table = "userProfiles";
+        private readonly string _fields = "userId, name, bio, image";
 
         public UserProfileRepository(DbConnectionManager dbConnectionManager)
         {
@@ -20,7 +20,7 @@ namespace mtcg.Data.Repositories
             connection.Open();
 
             return connection.QueryFirstOrDefault<UserProfile>(
-                $"SELECT * FROM { _Table } WHERE userId = @UserId;",
+                $"SELECT * FROM { _table } WHERE userId = @UserId;",
                 new { UserId = userId });
         }
 
@@ -29,7 +29,7 @@ namespace mtcg.Data.Repositories
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            var query = $"INSERT INTO { _Table } ({ _Fields }) VALUES (@UserId, @Name, @Bio, @Image);";
+            var query = $"INSERT INTO { _table } ({ _fields }) VALUES (@UserId, @Name, @Bio, @Image);";
             connection.Execute(query, userProfile);
         }
 
@@ -48,7 +48,7 @@ namespace mtcg.Data.Repositories
             else
             {
                 // Update existing profile
-                var query = $"UPDATE {_Table} SET name = @Name, bio = @Bio, image = @Image WHERE userId = @UserId;";
+                var query = $"UPDATE {_table} SET name = @Name, bio = @Bio, image = @Image WHERE userId = @UserId;";
                 connection.Execute(query, new { updatedProfile.Name, updatedProfile.Bio, updatedProfile.Image, UserId = userId });
             }
         }

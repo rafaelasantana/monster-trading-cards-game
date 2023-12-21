@@ -6,8 +6,8 @@ namespace mtcg.Data.Repositories
     public class PackageRepository
     {
         private readonly DbConnectionManager _dbConnectionManager;
-        private readonly string _Table = "packages";
-        private readonly string _Fields = "id, price, ownerId";
+        private readonly string _table = "packages";
+        private readonly string _fields = "id, price, ownerId";
         private readonly CardRepository _cardRepository;
 
         public PackageRepository(DbConnectionManager dbConnectionManager)
@@ -79,7 +79,7 @@ namespace mtcg.Data.Repositories
             connection.Open();
 
             // insert new package and return the generated Id
-            int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_Table} (price, ownerId) VALUES (@Price, @OwnerId) RETURNING Id", package);
+            int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_table} (price, ownerId) VALUES (@Price, @OwnerId) RETURNING Id", package);
 
             // check if insert is successful
             if (generatedId > 0)

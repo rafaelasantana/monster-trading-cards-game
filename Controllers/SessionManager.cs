@@ -7,7 +7,7 @@ namespace mtcg.Controllers
 {
     public class SessionManager
     {
-        private static readonly Dictionary<string, string> UserTokens = new Dictionary<string, string>();
+        private static readonly Dictionary<string, string> _userTokens = new Dictionary<string, string>();
 
         /// <summary>
         /// Creates a session token for this username and stores it locally in UserTokens
@@ -19,7 +19,7 @@ namespace mtcg.Controllers
             // generate token for this user
             string token = GenerateNotSecureToken(username);
             // store pair locally
-            UserTokens[username] = token;
+            _userTokens[username] = token;
             return token;
         }
 
@@ -45,7 +45,7 @@ namespace mtcg.Controllers
             username = null;
 
             // check if token exists
-            foreach(var pair in UserTokens)
+            foreach(var pair in _userTokens)
             {
                 if (pair.Value == token)
                 {
@@ -70,7 +70,7 @@ namespace mtcg.Controllers
         public static string? GetUserFromToken(string token)
         {
             // Find the username associated with the provided token
-            var userEntry = UserTokens.FirstOrDefault(pair => pair.Value == token);
+            var userEntry = _userTokens.FirstOrDefault(pair => pair.Value == token);
 
             // Check if an entry was found
             if (!string.IsNullOrEmpty(userEntry.Key))

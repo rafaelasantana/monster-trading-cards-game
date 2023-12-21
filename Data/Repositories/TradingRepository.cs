@@ -10,7 +10,7 @@ namespace mtcg.Data.Repositories
     public class TradingRepository
     {
         private readonly DbConnectionManager _dbConnectionManager;
-        private readonly string _Table = "tradings";
+        private readonly string _table = "tradings";
 
         public TradingRepository(DbConnectionManager dbConnectionManager)
         {
@@ -37,14 +37,18 @@ namespace mtcg.Data.Repositories
             return connection.Query<ExtendedTradingOffer>(query);
         }
 
-
+        /// <summary>
+        /// Returns the offer with this id
+        /// </summary>
+        /// <param name="offerId"></param>
+        /// <returns></returns>
         public TradingOffer GetOfferById(int offerId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
             return connection.QueryFirstOrDefault<TradingOffer>(
-                $"SELECT * FROM {_Table} WHERE id = @Id;",
+                $"SELECT * FROM {_table} WHERE id = @Id;",
                 new { OfferId = offerId });
         }
 
@@ -65,7 +69,7 @@ namespace mtcg.Data.Repositories
                 CheckOffer(offer);
 
                 // If all checks pass, proceed with creating the offer
-                var query = $"INSERT INTO {_Table} (id, ownerId, cardId, requestedType, minDamage) VALUES (@Id, @OwnerId, @CardId, @RequestedType, @MinDamage);";
+                var query = $"INSERT INTO {_table} (id, ownerId, cardId, requestedType, minDamage) VALUES (@Id, @OwnerId, @CardId, @RequestedType, @MinDamage);";
                 connection.Execute(query, offer);
                 return true;
             }
@@ -124,7 +128,7 @@ namespace mtcg.Data.Repositories
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
 
-            var query = $"UPDATE {_Table} SET status = @Status, updatedAt = CURRENT_TIMESTAMP WHERE id = @Id;";
+            var query = $"UPDATE {_table} SET status = @Status, updatedAt = CURRENT_TIMESTAMP WHERE id = @Id;";
             connection.Execute(query, new { OfferId = offerId, Status = status });
         }
     }

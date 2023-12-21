@@ -7,14 +7,14 @@ namespace mtcg.Controllers
 {
     public class HttpServer
     {
-        private HttpListener listener;
-        private readonly DbConnectionManager dbConnectionManager;
+        private HttpListener _listener;
+        private readonly DbConnectionManager _dbConnectionManager;
 
         public HttpServer(string prefix, DbConnectionManager dbConnectionManager)
         {
-            listener = new HttpListener();
-            listener.Prefixes.Add(prefix);
-            this.dbConnectionManager = dbConnectionManager;
+            _listener = new HttpListener();
+            _listener.Prefixes.Add(prefix);
+            this._dbConnectionManager = dbConnectionManager;
             // start server
             Start();
         }
@@ -23,16 +23,16 @@ namespace mtcg.Controllers
         public void Start()
         {
             // start server
-            listener.Start();
-            Console.WriteLine($"Listening for requests on {listener.Prefixes.FirstOrDefault() ?? "No prefixes"}");
+            _listener.Start();
+            Console.WriteLine($"Listening for requests on {_listener.Prefixes.FirstOrDefault() ?? "No prefixes"}");
 
             // handle incoming requests
             while (true)
             {
                 // get context from the request
-                HttpListenerContext context = listener.GetContext();
+                HttpListenerContext context = _listener.GetContext();
                 // create a request handler
-                var requestHandler = new RequestHandler(context, dbConnectionManager);
+                var requestHandler = new RequestHandler(context, _dbConnectionManager);
                 // handle the request
                 requestHandler.HandleRequest();
             }
@@ -41,8 +41,8 @@ namespace mtcg.Controllers
         // stops the HTTP server
         public void Stop()
         {
-            listener.Stop();
-            listener.Close();
+            _listener.Stop();
+            _listener.Close();
         }
 
     }

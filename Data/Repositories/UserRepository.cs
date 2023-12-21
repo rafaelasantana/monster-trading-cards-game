@@ -6,8 +6,8 @@ namespace mtcg.Data.Repositories
     public class UserRepository
     {
         private readonly DbConnectionManager _dbConnectionManager;
-        private readonly string _Table = "users";
-        private readonly string _Fields = "id, username, password, coins";
+        private readonly string _table = "users";
+        private readonly string _fields = "id, username, password, coins";
         public UserRepository(DbConnectionManager dbConnectionManager)
         {
             _dbConnectionManager = dbConnectionManager;
@@ -53,7 +53,7 @@ namespace mtcg.Data.Repositories
             user.Coins = 20;
 
             // insert new record and return the generated Id
-            int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_Table} (username, password, coins) VALUES (@Username, @Password, @Coins) RETURNING Id", user);
+            int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_table} (username, password, coins) VALUES (@Username, @Password, @Coins) RETURNING Id", user);
             if (generatedId > 0)
             {
                 // save generated Id to the object
@@ -74,7 +74,7 @@ namespace mtcg.Data.Repositories
             connection.Open();
 
             // build query
-            string query = $"SELECT {_Fields} FROM {_Table} WHERE username = @Username";
+            string query = $"SELECT {_fields} FROM {_table} WHERE username = @Username";
 
             // execute query and retrieve result
             var result = connection.QueryFirstOrDefault<User>(query, new { Username = username});
@@ -92,7 +92,7 @@ namespace mtcg.Data.Repositories
             connection.Open();
 
             // Update user record with new data
-            var query = $"UPDATE {_Table} SET username = @Username, password = @Password, coins = @Coins WHERE id = @Id";
+            var query = $"UPDATE {_table} SET username = @Username, password = @Password, coins = @Coins WHERE id = @Id";
             var rowsAffected = connection.Execute(query, user);
 
             if (rowsAffected == 0)

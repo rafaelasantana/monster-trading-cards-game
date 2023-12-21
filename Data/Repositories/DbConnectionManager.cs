@@ -8,14 +8,11 @@ namespace mtcg.Data.Repositories
 {
     public class DbConnectionManager
     {
-        private readonly string _connectionString = null!;
+        private readonly string _connectionString;
 
         public DbConnectionManager(IConfiguration configuration)
         {
             _connectionString = configuration.GetConnectionString("DefaultConnection")!;
-            // Register type handlers
-            // SqlMapper.AddTypeHandler(new ElementTypeHandler());
-            // SqlMapper.AddTypeHandler(new CardTypeHandler());
         }
 
         public NpgsqlConnection GetConnection()
@@ -42,30 +39,4 @@ namespace mtcg.Data.Repositories
             }
         }
     }
-
-    // public class ElementTypeHandler : SqlMapper.TypeHandler<Element>
-    // {
-    //     public override void SetValue(IDbDataParameter parameter, Element value)
-    //     {
-    //         parameter.Value = value.ToString();
-    //     }
-
-    //     public override Element Parse(object value)
-    //     {
-    //         return (Element)Enum.Parse(typeof(Element), (string)value);
-    //     }
-    // }
-
-    // public class CardTypeHandler : SqlMapper.TypeHandler<CardType>
-    // {
-    //     public override void SetValue(IDbDataParameter parameter, CardType value)
-    //     {
-    //         parameter.Value = value.ToString();
-    //     }
-
-    //     public override CardType Parse(object value)
-    //     {
-    //         return (CardType)Enum.Parse(typeof(CardType), (string)value);
-    //     }
-    // }
 }
