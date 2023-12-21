@@ -1,55 +1,25 @@
 namespace mtcg.Data.Models
 {
-    public enum Element
-    {
-        Water,
-        Fire,
-        Normal
-    }
-    public enum MonsterType
-    {
-        Goblin,
-        Troll,
-        Knight,
-        Kraken,
-        FireElf,
-        Dragon,
-        Ork,
-        Wizard,
-        Normal
-    }
-    public enum SpellType
-    {
-        FireSpell,
-        WaterSpell,
-        NormalSpell
-    }
-
-    public enum CardType
-    {
-        Monster,
-        Spell
-    }
-
     public class Card
     {
         public string Id { get; set; }
         public string Name { get; set; }
         public double Damage { get; set; }
-        public Element ElementType { get; set; }
-        public CardType Type { get; set; }
+        public string ElementType { get; set; }
+        public string CardType { get; set; }
         public int? PackageId { get; set; }
         public int? OwnerId { get; set; }
 
         public Card()
         {}
 
-        public Card(string id, string name, double damage, Element elementType)
+        public Card(string id, string name, double damage, string elementType, string cardType)
         {
             Id = id;
             Name = name;
             Damage = damage;
             ElementType = elementType;
+            CardType = cardType;
         }
 
         public void AttachToPackage(Package package)
@@ -57,28 +27,6 @@ namespace mtcg.Data.Models
             PackageId = package.Id;
         }
 
-    }
-
-    public class MonsterCard : Card
-    {
-        public MonsterType MonsterType { get; set; }
-
-        public MonsterCard(string id, string name, double damage, Element elementType, MonsterType monsterType)
-            : base(id, name, damage, elementType)
-        {
-            MonsterType = monsterType;
-        }
-    }
-
-    public class SpellCard : Card
-    {
-        public SpellType SpellType { get; set; }
-
-        public SpellCard(string id, string name, double damage, Element elementType, SpellType spellType)
-            : base(id, name, damage, elementType)
-        {
-            SpellType = spellType;
-        }
     }
 
 }

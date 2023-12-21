@@ -17,7 +17,6 @@ namespace mtcg.Data.Models
         /// <param name="json"></param>
         public Package(string json)
         {
-            Console.WriteLine("Creating package from json...");
             // set Id to 0 (will be updated once saved to the database)
             Id = 0;
             // set OwnerId to null
@@ -34,8 +33,6 @@ namespace mtcg.Data.Models
 
         private void AddCardsFromJson(string json)
         {
-            Console.WriteLine("In AddCardsFromJson...");
-            Console.WriteLine("received JSON:");
             Console.WriteLine(json);
             // initialize list of cards
             Cards = [];
@@ -43,15 +40,11 @@ namespace mtcg.Data.Models
             JArray cardArray = JArray.Parse(json);
             foreach (var cardData in cardArray)
             {
-                Console.WriteLine("Checking json card data");
                 string id = cardData["Id"].ToString();
-                Console.WriteLine($"Id: { id }");
                 string name = cardData["Name"].ToString();
-                Console.WriteLine($"name: { name }");
                 double damage = Convert.ToDouble(cardData["Damage"]);
-                Console.WriteLine($"damage: { damage }");
 
-                Element elementType = GetElementTypeFromName(name);
+                string elementType = GetElementTypeFromName(name);
 
                 Console.WriteLine("Parsed card.");
 
@@ -59,18 +52,16 @@ namespace mtcg.Data.Models
 
                 if (name.Contains("Spell"))
                 {
-                    // card = new SpellCard(id, name, damage, (Element)Enum.Parse(typeof(Element), elementType), GetSpellTypeFromName(name));
                     // create a spell card
-                    SpellType spellType = GetSpellTypeFromName(name);
-                    card = new SpellCard(id, name, damage, elementType, spellType);
+                    // string spellType = GetSpellTypeFromName(name);
+                    card = new Card(id, name, damage, elementType, "Spell");
                     Console.WriteLine("created new spell card");
                 }
                 else {
                     // card = new MonsterCard(id, name, damage, (Element)Enum.Parse(typeof(Element), elementType), GetMonsterTypeFromName(name));
-                    Console.WriteLine("created new monster card");
                     // create a monster card
-                    MonsterType monsterType = GetMonsterTypeFromName(name);
-                    card = new MonsterCard(id, name, damage, elementType, monsterType);
+                    // string monsterType = GetMonsterTypeFromName(name);
+                    card = new Card(id, name, damage, elementType, "Monster");
                     Console.WriteLine("created new monster card");
                 }
                 Cards.Add(card);
@@ -83,35 +74,35 @@ namespace mtcg.Data.Models
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        private static Element GetElementTypeFromName(string name)
+        private static string GetElementTypeFromName(string name)
         {
             if (name.Contains("Water"))
             {
-                return Element.Water;
+                return "Water";
             }
             else if (name.Contains("Fire"))
             {
-                return Element.Fire;
+                return "Fire";
             }
-            return Element.Normal;
+            return "Normal";
         }
 
         /// <summary>
         /// Returns the spell type referenced in the name or the normal spell
         /// </summary>
         /// <param name="name"></param>
-        /// <returns>Spell Type</returns>
-        private SpellType GetSpellTypeFromName(string name)
+        /// <returns>string</returns>
+        private static string GetSpellTypeFromName(string name)
         {
             if (name.Contains("Fire"))
             {
-                return SpellType.FireSpell;
+                return "Fire";
             }
             else if (name.Contains("Water"))
             {
-                return SpellType.WaterSpell;
+                return "Water";
             }
-            return SpellType.NormalSpell;
+            return "Normal";
         }
 
         /// <summary>
@@ -119,49 +110,38 @@ namespace mtcg.Data.Models
         /// </summary>
         /// <param name="name"></param>
         /// <returns>Monster Type</returns>
-        private MonsterType GetMonsterTypeFromName(string name)
+        private string GetMonsterTypeFromName(string name)
         {
             switch (name)
             {
                 case string n when n.Contains("Goblin"):
-                    return MonsterType.Goblin;
+                    return "Goblin";
                 case string n when n.Contains("Troll"):
-                    return MonsterType.Troll;
+                    return "Troll";
                 case string n when n.Contains("Knight"):
-                    return MonsterType.Knight;
+                    return "Knight";
                 case string n when n.Contains("Kraken"):
-                    return MonsterType.Kraken;
+                    return "Kraken";
                 case string n when n.Contains("FireElf"):
-                    return MonsterType.FireElf;
+                    return "FireElf";
                 case string n when n.Contains("Dragon"):
-                    return MonsterType.Dragon;
+                    return "Dragon";
                 case string n when n.Contains("Ork"):
-                    return MonsterType.Ork;
+                    return "Ork";
                 case string n when n.Contains("Wizard"):
-                    return MonsterType.Wizard;
+                    return "Wizard";
 
                 // Default to Normal if no specific MonsterType is identified
                 default:
-                    return MonsterType.Normal;
+                    return "Normal";
             }
         }
 
         public void PrintCards()
         {
-            Console.WriteLine($"Created Package with Id: { Id }, Price: { Price }, OwnerId: { OwnerId }");
             foreach (var card in Cards)
             {
-                Console.WriteLine($"Created Card - Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}, ElementType: {card.ElementType}");
-
-                if (card is MonsterCard monsterCard)
-                {
-                    Console.WriteLine($"Monster Type: {monsterCard.MonsterType}");
-                }
-                else if (card is SpellCard spellCard)
-                {
-                    Console.WriteLine($"Spell Type: {spellCard.SpellType}");
-                }
-
+                Console.WriteLine($"Created Card - Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}, ElementType: {card.ElementType}, CardType: {card.CardType}");
                 Console.WriteLine();
             }
         }
