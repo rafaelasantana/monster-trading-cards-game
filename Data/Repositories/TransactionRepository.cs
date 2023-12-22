@@ -9,7 +9,6 @@ namespace mtcg.Data.Repositories
         private readonly PackageRepository _packageRepository;
         private readonly DbConnectionManager _dbConnectionManager;
         private readonly string _table = "transactions";
-        private readonly string _fields = "id, userId, packageId, price";
         public TransactionRepository(DbConnectionManager dbConnectionManager, UserRepository userRepository, PackageRepository packageRepository)
         {
             _dbConnectionManager = dbConnectionManager;
@@ -45,7 +44,7 @@ namespace mtcg.Data.Repositories
             try
             {
                 // Check for available packages
-                Package package = _packageRepository.GetNextAvailablePackage();
+                Package? package = _packageRepository.GetNextAvailablePackage();
                 if (package == null)
                 {
                     errorMessage = "No packages available for purchase.";

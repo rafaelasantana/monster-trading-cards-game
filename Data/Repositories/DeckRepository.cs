@@ -10,7 +10,6 @@ namespace mtcg.Data.Repositories
     {
         private readonly DbConnectionManager _dbConnectionManager;
         private readonly string _table = "deckCards";
-        private readonly string _fields = "id, cardId, ownerId";
 
         public DeckRepository(DbConnectionManager dbConnectionManager)
         {
@@ -23,7 +22,7 @@ namespace mtcg.Data.Repositories
         /// <param name="userId"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public List<Card> GetDeckByUserId(int userId)
+        public List<Card> GetDeckByUserId(int? userId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
@@ -43,7 +42,7 @@ namespace mtcg.Data.Repositories
             return cards;
         }
 
-        public bool ConfigureDeck(int userId, string[] cardIds)
+        public bool ConfigureDeck(int? userId, string[] cardIds)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
@@ -65,9 +64,8 @@ namespace mtcg.Data.Repositories
                         new { CardId = cardId }, transaction);
                     if (isTrading)
                     {
-                        throw new InvalidOperationException("Card is open for trading and cannot be added to the deck.");
                         transaction.Rollback();
-                        return false; // Card is in trading, cannot be added to the deck
+                        throw new InvalidOperationException("Card is open for trading and cannot be added to the deck.");
                     }
 
                     // check if card belongs to the user
@@ -75,9 +73,8 @@ namespace mtcg.Data.Repositories
                                                     new { CardId = cardId, OwnerId = userId }, transaction);
                     if (count == 0)
                     {
-                        throw new InvalidOperationException("Card does not belong to the user.");
                         transaction.Rollback();
-                        return false; // Card does not belong to the user
+                        throw new InvalidOperationException("Card does not belong to the user.");
                     }
                     // Insert card to the deck
                     connection.Execute($"INSERT INTO { _table } (cardId, ownerId) VALUES (@CardId, @OwnerId)",
@@ -93,7 +90,6 @@ namespace mtcg.Data.Repositories
                 // Rollback transaction on error
                 transaction.Rollback();
                 throw new InvalidOperationException(ex.Message);
-                return false;
             }
         }
     }

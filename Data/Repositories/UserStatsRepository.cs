@@ -10,7 +10,6 @@ namespace mtcg.Data.Repositories
     {
         private readonly DbConnectionManager _dbConnectionManager;
         private readonly string _table = "userStats";
-        private readonly string _fields = "userId, eloRating, wins, losses, totalGamesPlayed";
 
         public UserStatsRepository(DbConnectionManager dbConnectionManager)
         {
@@ -22,7 +21,7 @@ namespace mtcg.Data.Repositories
         /// </summary>
         /// <param name="userId"></param>
         /// <returns></returns>
-        public UserStats GetStatsByUserId(int userId)
+        public UserStats? GetStatsByUserId(int? userId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
@@ -55,7 +54,7 @@ namespace mtcg.Data.Repositories
         /// Creates a new stats record with the user id and default values
         /// </summary>
         /// <param name="userId"></param>
-        public void CreateStats(int userId)
+        public void CreateStats(int? userId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
@@ -68,7 +67,7 @@ namespace mtcg.Data.Repositories
         /// Returns the scoreboard
         /// </summary>
         /// <returns></returns>
-        public IEnumerable<Scoreboard> GetScoreboardData()
+        public IEnumerable<Scoreboard>? GetScoreboardData()
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();

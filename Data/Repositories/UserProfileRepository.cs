@@ -14,7 +14,7 @@ namespace mtcg.Data.Repositories
             _dbConnectionManager = dbConnectionManager;
         }
 
-        public UserProfile GetUserProfile(int userId)
+        public UserProfile? GetUserProfile(int? userId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
@@ -33,7 +33,7 @@ namespace mtcg.Data.Repositories
             connection.Execute(query, userProfile);
         }
 
-        public void UpdateUserProfile(int userId, UserProfile updatedProfile)
+        public void UpdateUserProfile(int? userId, UserProfile updatedProfile)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();

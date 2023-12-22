@@ -7,7 +7,6 @@ namespace mtcg.Data.Repositories
     {
         private readonly DbConnectionManager _dbConnectionManager;
         private readonly string _table = "packages";
-        private readonly string _fields = "id, price, ownerId";
         private readonly CardRepository _cardRepository;
 
         public PackageRepository(DbConnectionManager dbConnectionManager)
@@ -60,10 +59,14 @@ namespace mtcg.Data.Repositories
             }
 
             // Update the cards if necessary
-            foreach (var card in package.GetCards())
+            var cards = package.GetCards();
+            if (cards != null)
             {
-                card.PackageId = package.Id;
-                _cardRepository.Update(card);
+                foreach (var card in cards)
+                {
+                    card.PackageId = package.Id;
+                    _cardRepository.Update(card);
+                }
             }
         }
 
@@ -102,13 +105,18 @@ namespace mtcg.Data.Repositories
         /// <param name="package"></param>
         private void AttachCards(Package package)
         {
+            var cards = package.GetCards();
             // attach cards to this package
-            List<Card> cards = package.GetCards();
-            foreach(Card card in cards)
+            if (cards != null)
             {
-                card.AttachToPackage(package);
-                _cardRepository.Save(card);
+                foreach(Card card in cards)
+                {
+                    card.AttachToPackage(package);
+                    _cardRepository.Save(card);
+                }
             }
+            else return;
+
         }
 
         /// <summary>
@@ -123,22 +131,26 @@ namespace mtcg.Data.Repositories
             connection.Open();
 
             // get this package's cards
-            List<Card> cards = package.GetCards();
-            // check if any cards already exist on the database
-            foreach(Card card in cards)
+            var cards = package.GetCards();
+            if (cards != null)
             {
-                // check if there is a card with this Id on the database
-                int count = connection.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM cards WHERE id = @Id", new { card.Id });
-                if (count > 0) return true;
+                // check if any cards already exist on the database
+                foreach(Card card in cards)
+                {
+                    // check if there is a card with this Id on the database
+                    int count = connection.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM cards WHERE id = @Id", new { card.Id });
+                    if (count > 0) return true;
+                }
+                return false;
             }
-            return false;
+            else return false;
         }
 
         /// <summary>
         /// Returns an available package (not owned by any user)
         /// </summary>
         /// <returns></returns>
-        public Package GetNextAvailablePackage()
+        public Package? GetNextAvailablePackage()
         {
             // open connection
             using var connection = _dbConnectionManager.GetConnection();
@@ -146,7 +158,7 @@ namespace mtcg.Data.Repositories
 
             // Select a package with no owner yet
             var query = "SELECT * FROM packages WHERE OwnerId IS NULL LIMIT 1;";
-            Package package = connection.QueryFirstOrDefault<Package>(query);
+            Package? package = connection.QueryFirstOrDefault<Package>(query);
 
             return package;
         }

@@ -14,7 +14,7 @@ namespace mtcg.Controllers
         /// </summary>
         /// <param name="username"></param>
         /// <returns></returns>
-        public static string CreateSessionToken(string username)
+        public string CreateSessionToken(string username)
         {
             // generate token for this user
             string token = GenerateNotSecureToken(username);
@@ -28,7 +28,7 @@ namespace mtcg.Controllers
         /// </summary>
         /// <param name="username"></param>
         /// <returns></returns>
-        private static string GenerateNotSecureToken(string username)
+        private string GenerateNotSecureToken(string? username)
         {
             return $"{username}-mtcgToken";
         }
@@ -39,7 +39,7 @@ namespace mtcg.Controllers
         /// <param name="token"></param>
         /// <param name="username"></param>
         /// <returns>Returns true and the associated username if the token is valid, or returns false</returns>
-        public static bool IsValidSessionToken(string? token, out string? username)
+        public bool IsValidSessionToken(string? token, out string? username)
         {
             // initialize username to null
             username = null;
@@ -62,12 +62,12 @@ namespace mtcg.Controllers
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        public static bool IsAdmin(string? token)
+        public bool IsAdmin(string? token)
         {
             return IsValidSessionToken(token, out var username) && username == "admin";
         }
 
-        public static string? GetUserFromToken(string token)
+        public string? GetUserFromToken(string? token)
         {
             // Find the username associated with the provided token
             var userEntry = _userTokens.FirstOrDefault(pair => pair.Value == token);

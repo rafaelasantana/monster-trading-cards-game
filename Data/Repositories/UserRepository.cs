@@ -67,7 +67,7 @@ namespace mtcg.Data.Repositories
         /// </summary>
         /// <param name="username"></param>
         /// <returns></returns>
-        public User? GetByUsername(string username)
+        public User? GetByUsername(string? username)
         {
             // open connection
             using var connection = _dbConnectionManager.GetConnection();
@@ -99,8 +99,6 @@ namespace mtcg.Data.Repositories
             {
                 throw new InvalidOperationException($"Update failed: No user found with ID {user.Id}.");
             }
-
-            Console.WriteLine($"Updated user with ID: {user.Id}");
         }
 
     }

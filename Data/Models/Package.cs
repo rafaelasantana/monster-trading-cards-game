@@ -4,10 +4,10 @@ namespace mtcg.Data.Models
 {
     public class Package
     {
-        public int Id { get; set; }
-        public int Price { get; set; }
+        public int? Id { get; set; }
+        public int? Price { get; set; }
         public int? OwnerId  { get; set; }
-        private List<Card> Cards;
+        private List<Card>? Cards { get; set; }
 
         public Package()
         {}
@@ -34,34 +34,43 @@ namespace mtcg.Data.Models
         private void AddCardsFromJson(string json)
         {
             Console.WriteLine(json);
-            // initialize list of cards
-            Cards = [];
+            Cards = new List<Card>();
 
-            // Parse cards from json
             JArray cardArray = JArray.Parse(json);
             foreach (var cardData in cardArray)
             {
-                string id = cardData["Id"].ToString();
-                string name = cardData["Name"].ToString();
-                double damage = Convert.ToDouble(cardData["Damage"]);
+                if (cardData["Id"] == null)
+                {
+                    throw new InvalidOperationException("Card data missing 'Id' field.");
+                }
+                string id = cardData["Id"]!.ToString();
+
+                if (cardData["Name"] == null)
+                {
+                    throw new InvalidOperationException("Card data missing 'Name' field.");
+                }
+                string name = cardData["Name"]!.ToString();
+
+                if (cardData["Damage"] == null)
+                {
+                    throw new InvalidOperationException("Card data missing 'Damage' field.");
+                }
+
+                if (!double.TryParse(cardData["Damage"]!.ToString(), out double damage))
+                {
+                    throw new FormatException($"Invalid format for 'Damage' field in card '{id}'.");
+                }
 
                 string elementType = GetElementTypeFromName(name);
+                Card card = name.Contains("Spell") ?
+                            new Card(id, name, damage, elementType, "Spell") :
+                            new Card(id, name, damage, elementType, "Monster");
 
-                // create card
-                Card card;
-
-                if (name.Contains("Spell"))
-                {
-                    // create a spell card
-                    card = new Card(id, name, damage, elementType, "Spell");
-                }
-                else {
-                    // create a monster card
-                    card = new Card(id, name, damage, elementType, "Monster");
-                }
                 Cards.Add(card);
             }
         }
+
+
 
         /// <summary>
         /// Returns the element type referenced in the name or the normal type
@@ -86,6 +95,11 @@ namespace mtcg.Data.Models
         /// </summary>
         public void PrintCards()
         {
+            if (Cards == null)
+            {
+                Console.WriteLine("No cards available.");
+                return;
+            }
             foreach (var card in Cards)
             {
                 Console.WriteLine($"Created Card - Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}, ElementType: {card.ElementType}, CardType: {card.CardType}");
@@ -96,7 +110,7 @@ namespace mtcg.Data.Models
         /// Returns all cards in this package as a list
         /// </summary>
         /// <returns></returns>
-        public List<Card> GetCards()
+        public List<Card>? GetCards()
         {
             return Cards;
         }

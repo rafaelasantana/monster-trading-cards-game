@@ -61,7 +61,7 @@ namespace mtcg.Data.Repositories
         /// </summary>
         /// <param name="userId"></param>
         /// <returns></returns>
-        public List<Card> GetCardsByUserId(int userId)
+        public List<Card> GetCardsByUserId(int? userId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();

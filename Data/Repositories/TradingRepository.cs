@@ -42,7 +42,7 @@ namespace mtcg.Data.Repositories
         /// </summary>
         /// <param name="offerId"></param>
         /// <returns></returns>
-        public TradingOffer GetOfferById(int offerId)
+        public TradingOffer? GetOfferById(int offerId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             connection.Open();
@@ -76,7 +76,6 @@ namespace mtcg.Data.Repositories
             catch (Exception ex)
             {
                 throw new InvalidOperationException(ex.Message);
-                return false;
             }
 
         }

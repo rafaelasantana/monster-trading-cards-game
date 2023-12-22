@@ -41,18 +41,20 @@ namespace mtcg.Controllers
         {
             try
             {
+                if (_context == null) return;
                 using var reader = new StreamReader(_context.Request.InputStream);
                 string json = reader.ReadToEnd();
+                string method = _context.Request.HttpMethod;
 
-                if (_context.Request.HttpMethod == "POST")
+                if (method == "POST")
                 {
                     HandlePOST(json);
                 }
-                else if (_context.Request.HttpMethod == "GET")
+                else if (method == "GET")
                 {
                     HandleGET();
                 }
-                else if (_context.Request.HttpMethod == "PUT")
+                else if (method == "PUT")
                 {
                     HandlePUT(json);
                 }
@@ -77,7 +79,14 @@ namespace mtcg.Controllers
         /// <param name="json"></param>
         private void HandlePOST(string json)
         {
-            switch (_context.Request.Url.AbsolutePath)
+            // Check for nulls in the object chain
+            if (_context == null || _context.Request == null || _context.Request.Url == null)
+            {
+                throw new InvalidOperationException("Request context is not properly initialized.");
+            }
+            string path = _context.Request.Url.AbsolutePath;
+
+            switch (path)
             {
                 case "/users":
                     HandleUserRegistration(json);
@@ -107,7 +116,14 @@ namespace mtcg.Controllers
         /// <param name="json"></param>
         private void HandleGET()
         {
+            // Check for nulls in the object chain
+            if (_context == null || _context.Request == null || _context.Request.Url == null)
+            {
+                throw new InvalidOperationException("Request context is not properly initialized.");
+            }
+
             string path = _context.Request.Url.AbsolutePath;
+
             if (path.StartsWith("/users/"))
             {
                 HandleGetUserProfile();
@@ -145,6 +161,12 @@ namespace mtcg.Controllers
         /// <param name="json"></param>
         private void HandlePUT(string json)
         {
+            // Check for nulls in the object chain
+            if (_context == null || _context.Request == null || _context.Request.Url == null)
+            {
+                throw new InvalidOperationException("Request context is not properly initialized.");
+            }
+
             string path = _context.Request.Url.AbsolutePath;
             if (path.StartsWith("/users/"))
             {
@@ -175,6 +197,13 @@ namespace mtcg.Controllers
                 // create new user based on json data
                 User? newUser = ParseUserFromJson(json);
 
+                // Ensure that newUser is not null and username is not null
+                if (newUser == null || string.IsNullOrWhiteSpace(newUser.Username))
+                {
+                    // Handle the case where newUser or newUser.Username is null
+                    SendResponse("Invalid user data", HttpStatusCode.BadRequest);
+                    return;
+                }
                 // check if username is already taken
                 if (_userRepository.GetByUsername(newUser.Username) != null)
                 {
@@ -218,12 +247,26 @@ namespace mtcg.Controllers
             {
                 User? loginUser = ParseUserFromJson(json);
 
+                // Check if loginUser is null or if Username or Password is null
+                if (loginUser == null || string.IsNullOrEmpty(loginUser.Username) || loginUser.Password == null)
+                {
+                    // Handle the case where loginUser or its properties are null
+                    SendResponse("Invalid login data", HttpStatusCode.BadRequest);
+                    return;
+                }
+
                 // get user's data from the database
                 User? registeredUser = _userRepository.GetByUsername(loginUser.Username);
 
                 // check if user exists and password matches
                 if (registeredUser != null && BCrypt.Net.BCrypt.Verify(loginUser.Password, registeredUser.Password))
                 {
+                    // Check if registeredUser.Username is not null
+                    if (string.IsNullOrEmpty(registeredUser.Username))
+                    {
+                        SendResponse("Username cannot be null", HttpStatusCode.InternalServerError);
+                        return;
+                    }
                     // create a token for this session
                     _sessionManager.CreateSessionToken(registeredUser.Username);
                     // send success response
@@ -344,7 +387,7 @@ namespace mtcg.Controllers
                 }
 
                 // Check if format=plain is requested
-                string format = _context.Request.QueryString["format"];
+                string? format = _context.Request.QueryString["format"];
                 if (format == "plain")
                 {
                     string plainResponse = CreatePlainTextResponse(deck);
@@ -409,6 +452,12 @@ namespace mtcg.Controllers
                 // Validate the user tokens
                 User user = ValidateTokenAndGetUser();
 
+                // Check for nulls in the object chain
+                if (_context == null || _context.Request == null || _context.Request.Url == null || string.IsNullOrEmpty(_context.Request.Url.AbsolutePath))
+                {
+                    throw new Exception("Invalid request context.");
+                }
+
                 // Extract username from the URL
                 string urlUsername = _context.Request.Url.AbsolutePath.Split('/')[2]; // Assumes URL is /users/{username}
 
@@ -419,7 +468,7 @@ namespace mtcg.Controllers
                 }
 
                 // Fetch user profile data
-                UserProfile userProfile = _userProfileRepository.GetUserProfile(user.Id);
+                UserProfile? userProfile = _userProfileRepository.GetUserProfile(user.Id);
                 if (userProfile == null)
                 {
                     SendResponse("User profile not found.", HttpStatusCode.NotFound);
@@ -431,7 +480,7 @@ namespace mtcg.Controllers
             }
             catch (Exception ex)
             {
-                SendResponse(ex.Message, HttpStatusCode.Unauthorized);
+                SendResponse(ex.Message, HttpStatusCode.BadRequest);
             }
         }
 
@@ -447,10 +496,17 @@ namespace mtcg.Controllers
                 // Validate the user tokens
                 User user = ValidateTokenAndGetUser();
 
-                // Extract username from the URL
-                string urlUsername = _context.Request.Url.AbsolutePath.Split('/')[2]; // Assumes URL is /users/{username}
+                if (_context == null || _context.Request == null || _context.Request.Url == null || string.IsNullOrEmpty(_context.Request.Url.AbsolutePath))
+                {
+                    throw new InvalidOperationException("Invalid request context.");
+                }
+                string[] urlParts = _context.Request.Url.AbsolutePath.Split('/');
+                if (urlParts.Length < 3)
+                {
+                    throw new InvalidOperationException("Invalid URL format.");
+                }
+                string urlUsername = urlParts[2];
 
-                // Check if the username matches the one from the token
                 if (user.Username != urlUsername)
                 {
                     throw new UnauthorizedAccessException("You are not authorized to update this profile.");
@@ -459,6 +515,10 @@ namespace mtcg.Controllers
                 // Parse JSON payload to UserProfile object
                 var updatedProfile = JsonConvert.DeserializeObject<UserProfile>(json);
 
+                if (updatedProfile == null)
+                {
+                    throw new InvalidOperationException("Failed to parse user profile data.");
+                }
                 // Update user profile
                 _userProfileRepository.UpdateUserProfile(user.Id, updatedProfile);
 
@@ -484,7 +544,7 @@ namespace mtcg.Controllers
                 User user = ValidateTokenAndGetUser();
 
                 // Fetch user stats from the repository
-                UserStats stats = _userStatsRepository.GetStatsByUserId(user.Id);
+                UserStats? stats = _userStatsRepository.GetStatsByUserId(user.Id);
                 if (stats == null)
                 {
                     SendResponse("Stats not found.", HttpStatusCode.NotFound);
@@ -513,6 +573,12 @@ namespace mtcg.Controllers
 
                 // Query the database for the scoreboard
                 var scoreboardData = _userStatsRepository.GetScoreboardData();
+
+                if (scoreboardData == null)
+                {
+                    SendResponse("Scoreboard data not found.", HttpStatusCode.NotFound);
+                    return;
+                }
 
                 // Send the JSON response
                 SendFormattedJSONResponse(scoreboardData, HttpStatusCode.OK);
@@ -558,25 +624,26 @@ namespace mtcg.Controllers
         {
             try
             {
-                // Validate user token
                 User user = ValidateTokenAndGetUser();
 
-                // Deserialize JSON to dynamic object to access properties
-                dynamic tradeOfferJson = JsonConvert.DeserializeObject<dynamic>(json);
+                var tradeOfferJson = JsonConvert.DeserializeObject<TradeOfferJsonModel>(json);
+                if (tradeOfferJson == null)
+                {
+                    SendResponse("Invalid JSON format.", HttpStatusCode.BadRequest);
+                    return;
+                }
 
-                // Construct StoreCard object with expected properties
+                // Rest of your code with tradeOfferJson...
                 var tradeOffer = new TradingOffer
                 {
-                    Id = tradeOfferJson.Id,
+                    Id = tradeOfferJson.Id ?? Guid.NewGuid().ToString(),
                     OwnerId = user.Id,
-                    CardId = tradeOfferJson.CardToTrade, // Assuming this is the actual card ID to be traded
+                    CardId = tradeOfferJson.CardToTrade,
                     RequestedType = tradeOfferJson.Type,
-                    MinDamage = tradeOfferJson.MinimumDamage
+                    MinDamage = tradeOfferJson.MinimumDamage ?? 0
                 };
 
-                // Create trading offer
                 _tradingRepository.CreateOffer(tradeOffer);
-
                 SendResponse("Trading deal created successfully!", HttpStatusCode.Created);
             }
             catch (Exception ex)
@@ -584,6 +651,7 @@ namespace mtcg.Controllers
                 SendResponse($"Error: {ex.Message}", HttpStatusCode.BadRequest);
             }
         }
+
 
         /// <summary>
         /// Validates the token and returns the associated user, or throws an exception
@@ -698,4 +766,12 @@ namespace mtcg.Controllers
             }
         }
     }
+    public class TradeOfferJsonModel
+    {
+        public string? Id { get; set; }
+        public string? CardToTrade { get; set; }
+        public string? Type { get; set; }
+        public int? MinimumDamage { get; set; }
+    }
+
 }
