@@ -56,8 +56,11 @@ namespace mtcg.Data.Repositories
         /// <param name="userId"></param>
         public void CreateStats(int? userId)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = $"INSERT INTO { _table } (userId) VALUES (@UserId)";
             connection.Execute(query, new { UserId = userId });

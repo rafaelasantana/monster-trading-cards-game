@@ -1,3 +1,4 @@
+using System.Data;
 using Dapper;
 using mtcg.Data.Models;
 
@@ -26,8 +27,11 @@ namespace mtcg.Data.Repositories
 
         public void CreateUserProfile(UserProfile userProfile)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = $"INSERT INTO { _table } ({ _fields }) VALUES (@UserId, @Name, @Bio, @Image);";
             connection.Execute(query, userProfile);

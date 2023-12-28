@@ -19,12 +19,6 @@ namespace mtcg.Data.Repositories
         /// <param name="user"></param>
         public void Save(User user)
         {
-            var connection = _dbConnectionManager.GetConnection();
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
-
             // Check if the username already exists in the database
             var existingUser = GetByUsername(user.Username);
             if (existingUser == null)
@@ -35,7 +29,6 @@ namespace mtcg.Data.Repositories
             {
                 Update(user);
             }
-            connection.Close();
         }
 
         /// <summary>
@@ -67,7 +60,6 @@ namespace mtcg.Data.Repositories
                 user.Id = generatedId;
             }
             else throw new InvalidOperationException("Failed to insert the new user.");
-            connection.Close();
         }
 
         /// <summary>
@@ -90,7 +82,7 @@ namespace mtcg.Data.Repositories
             // execute query and retrieve result
             var result = connection.QueryFirstOrDefault<User>(query, new { Username = username});
 
-            connection.Close();
+            // connection.Close();
             return result;
         }
 
@@ -114,7 +106,6 @@ namespace mtcg.Data.Repositories
             {
                 throw new InvalidOperationException($"Update failed: No user found with ID {user.Id}.");
             }
-            connection.Close();
         }
 
         /// <summary>
@@ -157,7 +148,7 @@ namespace mtcg.Data.Repositories
 
             Save(newUser); // Save the new user
 
-            // create new user profile
+            // create new user
             UserProfile newUserProfile = new(newUser.Id, null, null, null);
             _userProfileRepository.CreateUserProfile(newUserProfile);
 
