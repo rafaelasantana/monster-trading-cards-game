@@ -22,7 +22,6 @@ namespace mtcg.Controllers
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
         {
             _context = context;
-            _userRepository = new UserRepository(dbConnectionManager);
             _userProfileRepository = new UserProfileRepository(dbConnectionManager);
             _packageRepository = new PackageRepository(dbConnectionManager);
             _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
@@ -30,6 +29,7 @@ namespace mtcg.Controllers
             _deckRepository = new DeckRepository(dbConnectionManager);
             _userStatsRepository = new UserStatsRepository(dbConnectionManager);
             _tradingRepository = new TradingRepository(dbConnectionManager);
+            _userRepository = new UserRepository(dbConnectionManager, _userStatsRepository, _userProfileRepository);
             _sessionManager = new SessionManager();
         }
 
@@ -193,46 +193,34 @@ namespace mtcg.Controllers
         {
             try
             {
-                // create new user based on json data
                 User? newUser = ParseUserFromJson(json);
 
-                // Ensure that newUser is not null and username is not null
                 if (newUser == null || string.IsNullOrWhiteSpace(newUser.Username))
                 {
-                    // Handle the case where newUser or newUser.Username is null
                     SendResponse("Invalid user data", HttpStatusCode.BadRequest);
                     return;
                 }
-                // check if username is already taken
-                if (_userRepository.GetByUsername(newUser.Username) != null)
-                {
-                    // send error response
-                    string errorResponse = "Username already exists!";
-                    SendResponse(errorResponse, HttpStatusCode.BadRequest);
-                }
-                else
-                {
-                    // save new user
-                    _userRepository.Save(newUser);
 
-                    // create a user profile with for this user
-                    UserProfile newUserProfile = new UserProfile(newUser.Id, null, null, null);
-                    _userProfileRepository.CreateUserProfile(newUserProfile);
+                _userRepository.RegisterUser(newUser);
 
-                    // create a user stats record
-                    // UserStats newUserStats = new UserStats(newUser.Id);
-                    _userStatsRepository.CreateStats(newUser.Id);
-                    Console.WriteLine("Created new user stats");
-
-                    // send success response
-                    string successResponse = "User registered successfully!";
-                    SendResponse(successResponse, HttpStatusCode.OK);
-                }
+                // Registration successful
+                string successResponse = "User registered successfully!";
+                SendResponse(successResponse, HttpStatusCode.OK);
             }
-            catch (Exception e)
+            catch (ArgumentException ex)
             {
-                // send error response
-                string errorResponse = $"Error: {e.Message}";
+                // Handle invalid argument exceptions
+                SendResponse(ex.Message, HttpStatusCode.BadRequest);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Handle user already exists
+                SendResponse(ex.Message, HttpStatusCode.BadRequest);
+            }
+            catch (Exception ex)
+            {
+                // Handle other exceptions
+                string errorResponse = $"Error: {ex.Message}";
                 SendResponse(errorResponse, HttpStatusCode.InternalServerError);
             }
         }
@@ -240,50 +228,41 @@ namespace mtcg.Controllers
         /// <summary>
         /// logs a registered user in, or sends an error response
         /// </summary>
-        private void HandleUserLogin(string json) {
-
+        private void HandleUserLogin(string json)
+        {
             try
             {
                 User? loginUser = ParseUserFromJson(json);
 
-                // Check if loginUser is null or if Username or Password is null
-                if (loginUser == null || string.IsNullOrEmpty(loginUser.Username) || loginUser.Password == null)
+                if (loginUser == null || string.IsNullOrEmpty(loginUser.Username) || string.IsNullOrEmpty(loginUser.Password))
                 {
-                    // Handle the case where loginUser or its properties are null
                     SendResponse("Invalid login data", HttpStatusCode.BadRequest);
                     return;
                 }
 
-                // get user's data from the database
-                User? registeredUser = _userRepository.GetByUsername(loginUser.Username);
+                User registeredUser = _userRepository.LoginUser(loginUser.Username, loginUser.Password);
 
-                // check if user exists and password matches
-                if (registeredUser != null && BCrypt.Net.BCrypt.Verify(loginUser.Password, registeredUser.Password))
+                // Ensure that the username is not null
+                if (string.IsNullOrEmpty(registeredUser.Username))
                 {
-                    // Check if registeredUser.Username is not null
-                    if (string.IsNullOrEmpty(registeredUser.Username))
-                    {
-                        SendResponse("Username cannot be null", HttpStatusCode.InternalServerError);
-                        return;
-                    }
-                    // create a token for this session
-                    _sessionManager.CreateSessionToken(registeredUser.Username);
-                    // send success response
-                    string successResponse = "Login successful!";
-                    SendResponse(successResponse, HttpStatusCode.OK);
+                    throw new InvalidOperationException("Logged-in user must have a username.");
                 }
-                else
-                {
-                    // send error response
-                    string errorResponse = "Invalid username or password.";
-                    SendResponse(errorResponse, HttpStatusCode.Unauthorized);
-                }
+
+                // Create a token for this session
+                _sessionManager.CreateSessionToken(registeredUser.Username);
+
+                // Send success response
+                SendResponse("Login successful!", HttpStatusCode.OK);
             }
-            catch (Exception e)
+            catch (InvalidOperationException ex)
             {
-                // send error response
-                string errorResponse = $"Error: {e.Message}";
-                SendResponse(errorResponse, HttpStatusCode.InternalServerError);
+                // Handle invalid credentials
+                SendResponse(ex.Message, HttpStatusCode.Unauthorized);
+            }
+            catch (Exception ex)
+            {
+                // Handle other exceptions
+                SendResponse($"Error: {ex.Message}", HttpStatusCode.InternalServerError);
             }
         }
 

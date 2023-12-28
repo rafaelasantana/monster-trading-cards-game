@@ -4,9 +4,12 @@ using mtcg.Data.Models;
 
 namespace mtcg.Data.Repositories
 {
-    public class UserRepository(IDbConnectionManager dbConnectionManager)
+    public class UserRepository(IDbConnectionManager dbConnectionManager, UserStatsRepository userStatsRepository, UserProfileRepository userProfileRepository)
     {
         private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
+
+        private readonly UserStatsRepository _userStatsRepository = userStatsRepository;
+        private readonly UserProfileRepository _userProfileRepository = userProfileRepository;
         private readonly string _table = "users";
         private readonly string _fields = "id, username, password, coins";
 
@@ -114,5 +117,52 @@ namespace mtcg.Data.Repositories
             connection.Close();
         }
 
+        /// <summary>
+        /// Verifies the credentials for a registered user
+        /// </summary>
+        /// <param name="username"></param>
+        /// <param name="password"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public User LoginUser(string username, string password)
+        {
+            var user = GetByUsername(username);
+            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
+            {
+                throw new InvalidOperationException("Invalid username or password.");
+            }
+            return user;
+        }
+
+        /// <summary>
+        /// Registers a new user, creates a user profile and user stats
+        /// </summary>
+        /// <param name="newUser"></param>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void RegisterUser(User newUser)
+        {
+            if (string.IsNullOrWhiteSpace(newUser.Username))
+            {
+                throw new ArgumentException("Username cannot be empty.");
+            }
+
+            if (GetByUsername(newUser.Username) != null)
+            {
+                throw new InvalidOperationException("Username already exists!");
+            }
+
+            // Hash password if necessary
+            newUser.Password = BCrypt.Net.BCrypt.HashPassword(newUser.Password);
+
+            Save(newUser); // Save the new user
+
+            // create new user profile
+            UserProfile newUserProfile = new(newUser.Id, null, null, null);
+            _userProfileRepository.CreateUserProfile(newUserProfile);
+
+            // create a user stats record
+            _userStatsRepository.CreateStats(newUser.Id);
+        }
     }
 }
