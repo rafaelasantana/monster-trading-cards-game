@@ -1,7 +1,5 @@
 using System.Net;
 using mtcg.Data.Repositories;
-using mtcg.Data.Models;
-using Newtonsoft.Json;
 
 namespace mtcg.Controllers
 {
@@ -14,7 +12,7 @@ namespace mtcg.Controllers
         {
             _listener = new HttpListener();
             _listener.Prefixes.Add(prefix);
-            this._dbConnectionManager = dbConnectionManager;
+            _dbConnectionManager = dbConnectionManager;
             // start server
             Start();
         }

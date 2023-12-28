@@ -4,6 +4,8 @@
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/mtcg.runtimeconfig.json
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/mtcg.dll
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/mtcg.pdb
+/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/BCrypt.Net-Next.dll
+/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/Dapper.dll
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/Humanizer.dll
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/Microsoft.Bcl.AsyncInterfaces.dll
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/Microsoft.CodeAnalysis.dll
@@ -98,12 +100,10 @@
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.AssemblyInfoInputs.cache
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.AssemblyInfo.cs
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.csproj.CoreCompileInputs.cache
+/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.sourcelink.json
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.csproj.CopyComplete
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.dll
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/refint/mtcg.dll
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.pdb
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.genruntimeconfig.cache
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/ref/mtcg.dll
-/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/Debug/net8.0/mtcg.sourcelink.json
-/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/Dapper.dll
-/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/bin/Debug/net8.0/BCrypt.Net-Next.dll

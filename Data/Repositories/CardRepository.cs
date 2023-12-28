@@ -1,6 +1,7 @@
 using System;
 using Dapper;
 using mtcg.Data.Models;
+using System.Collections.Generic;
 
 namespace mtcg.Data.Repositories
 {

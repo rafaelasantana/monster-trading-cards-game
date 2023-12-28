@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using mtcg.Data.Models;
 using mtcg.Data.Repositories;
-using mtcg.Controllers;
 using Newtonsoft.Json;
 
 namespace mtcg.Controllers
@@ -651,7 +650,6 @@ namespace mtcg.Controllers
                 SendResponse($"Error: {ex.Message}", HttpStatusCode.BadRequest);
             }
         }
-
 
         /// <summary>
         /// Validates the token and returns the associated user, or throws an exception

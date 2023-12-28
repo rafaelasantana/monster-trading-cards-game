@@ -23,12 +23,8 @@ namespace mtcg.Data.Models
             OwnerId = null;
             // set price to 5 coins
             Price = 5;
-
             // add cards from json request
             AddCardsFromJson(json);
-
-            // print cards
-            PrintCards();
         }
 
         private void AddCardsFromJson(string json)

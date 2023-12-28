@@ -1,3 +1,4 @@
+using System.Data;
 using Dapper;
 using mtcg.Data.Models;
 
@@ -5,10 +6,11 @@ namespace mtcg.Data.Repositories
 {
     public class UserRepository
     {
-        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager;
         private readonly string _table = "users";
         private readonly string _fields = "id, username, password, coins";
-        public UserRepository(DbConnectionManager dbConnectionManager)
+
+        public UserRepository(IDbConnectionManager dbConnectionManager)
         {
             _dbConnectionManager = dbConnectionManager;
         }
@@ -19,8 +21,11 @@ namespace mtcg.Data.Repositories
         /// <param name="user"></param>
         public void Save(User user)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // Check if the username already exists in the database
             var existingUser = GetByUsername(user.Username);
@@ -32,6 +37,7 @@ namespace mtcg.Data.Repositories
             {
                 Update(user);
             }
+            connection.Close();
         }
 
         /// <summary>
@@ -42,8 +48,11 @@ namespace mtcg.Data.Repositories
         private void SaveNew(User user)
         {
             // open connection
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // hash password
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(user.Password);
@@ -60,6 +69,7 @@ namespace mtcg.Data.Repositories
                 user.Id = generatedId;
             }
             else throw new InvalidOperationException("Failed to insert the new user.");
+            connection.Close();
         }
 
         /// <summary>
@@ -70,8 +80,11 @@ namespace mtcg.Data.Repositories
         public User? GetByUsername(string? username)
         {
             // open connection
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // build query
             string query = $"SELECT {_fields} FROM {_table} WHERE username = @Username";
@@ -79,6 +92,7 @@ namespace mtcg.Data.Repositories
             // execute query and retrieve result
             var result = connection.QueryFirstOrDefault<User>(query, new { Username = username});
 
+            connection.Close();
             return result;
         }
 
@@ -88,8 +102,11 @@ namespace mtcg.Data.Repositories
         /// <param name="user"></param>
         public void Update(User user)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // Update user record with new data
             var query = $"UPDATE {_table} SET username = @Username, password = @Password, coins = @Coins WHERE id = @Id";
@@ -99,6 +116,7 @@ namespace mtcg.Data.Repositories
             {
                 throw new InvalidOperationException($"Update failed: No user found with ID {user.Id}.");
             }
+            connection.Close();
         }
 
     }
