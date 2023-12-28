@@ -24,12 +24,12 @@ namespace mtcg.Controllers
             _context = context;
             _userProfileRepository = new UserProfileRepository(dbConnectionManager);
             _packageRepository = new PackageRepository(dbConnectionManager);
-            _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
             _cardRepository = new CardRepository(dbConnectionManager);
             _deckRepository = new DeckRepository(dbConnectionManager);
             _userStatsRepository = new UserStatsRepository(dbConnectionManager);
             _tradingRepository = new TradingRepository(dbConnectionManager);
             _userRepository = new UserRepository(dbConnectionManager, _userStatsRepository, _userProfileRepository);
+            _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
             _sessionManager = new SessionManager();
         }
 
