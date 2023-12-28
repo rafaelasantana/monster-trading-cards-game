@@ -4,16 +4,11 @@ using mtcg.Data.Models;
 
 namespace mtcg.Data.Repositories
 {
-    public class UserRepository
+    public class UserRepository(IDbConnectionManager dbConnectionManager)
     {
-        private readonly IDbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
         private readonly string _table = "users";
         private readonly string _fields = "id, username, password, coins";
-
-        public UserRepository(IDbConnectionManager dbConnectionManager)
-        {
-            _dbConnectionManager = dbConnectionManager;
-        }
 
         /// <summary>
         /// Saves a new user to the database or updates an existing user record

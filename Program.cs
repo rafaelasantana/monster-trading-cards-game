@@ -9,15 +9,26 @@ namespace mtcg
     {
         static void Main(string[] args)
         {
-            // create database connection
-            var dbConnection = new NpgsqlConnection("Host=localhost;Port=5433;Database=mtcgdb;Username=mtcguser;Password=mtcgpassword;");
+            // Build configuration
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
 
-            // create database manager
+            // Retrieve the connection string
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+            // Create database connection
+            var dbConnection = new NpgsqlConnection(connectionString);
+
+            // Create database manager
             var dbConnectionManager = new DbConnectionManager(dbConnection);
 
-            // create HTTP server
-            HttpServer server = new("http://localhost:10001/", dbConnectionManager);
+            // Retrieve server URL from configuration
+            var serverUrl = configuration["ServerUrl"] ?? "http://localhost:10001/";
 
+            // Create HTTP server
+            HttpServer server = new(serverUrl, dbConnectionManager);
         }
     }
 }
