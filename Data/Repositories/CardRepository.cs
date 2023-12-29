@@ -7,11 +7,11 @@ namespace mtcg.Data.Repositories
 {
     public class CardRepository
     {
-        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager;
         private readonly string _table = "cards";
         private readonly string _fields = "id, name, damage, elementType, cardType, packageId, ownerId";
 
-        public CardRepository(DbConnectionManager dbConnectionManager)
+        public CardRepository(IDbConnectionManager dbConnectionManager)
         {
             _dbConnectionManager = dbConnectionManager;
         }

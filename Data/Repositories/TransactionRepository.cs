@@ -3,18 +3,12 @@ using mtcg.Data.Models;
 
 namespace mtcg.Data.Repositories
 {
-    public class TransactionRepository
+    public class TransactionRepository(IDbConnectionManager dbConnectionManager, UserRepository userRepository, PackageRepository packageRepository)
     {
-        private readonly UserRepository _userRepository;
-        private readonly PackageRepository _packageRepository;
-        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly UserRepository _userRepository = userRepository;
+        private readonly PackageRepository _packageRepository = packageRepository;
+        private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
         private readonly string _table = "transactions";
-        public TransactionRepository(DbConnectionManager dbConnectionManager, UserRepository userRepository, PackageRepository packageRepository)
-        {
-            _dbConnectionManager = dbConnectionManager;
-            _userRepository = userRepository;
-            _packageRepository = packageRepository;
-        }
 
         /// <summary>
         /// Saves a transaction with user id, package id and price to the database

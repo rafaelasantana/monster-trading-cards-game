@@ -4,16 +4,11 @@ using mtcg.Data.Models;
 
 namespace mtcg.Data.Repositories
 {
-    public class UserProfileRepository
+    public class UserProfileRepository(IDbConnectionManager dbConnectionManager)
     {
-        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
         private readonly string _table = "userProfiles";
         private readonly string _fields = "userId, name, bio, image";
-
-        public UserProfileRepository(DbConnectionManager dbConnectionManager)
-        {
-            _dbConnectionManager = dbConnectionManager;
-        }
 
         public UserProfile? GetUserProfile(int? userId)
         {

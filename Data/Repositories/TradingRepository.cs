@@ -7,15 +7,10 @@ using mtcg.Data.Models;
 
 namespace mtcg.Data.Repositories
 {
-    public class TradingRepository
+    public class TradingRepository(IDbConnectionManager dbConnectionManager)
     {
-        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
         private readonly string _table = "tradings";
-
-        public TradingRepository(DbConnectionManager dbConnectionManager)
-        {
-            _dbConnectionManager = dbConnectionManager;
-        }
 
         /// <summary>
         /// Returns all open offers for trading

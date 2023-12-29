@@ -7,7 +7,6 @@ namespace mtcg.Data.Repositories
     public class UserRepository(IDbConnectionManager dbConnectionManager, UserStatsRepository userStatsRepository, UserProfileRepository userProfileRepository)
     {
         private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
-
         private readonly UserStatsRepository _userStatsRepository = userStatsRepository;
         private readonly UserProfileRepository _userProfileRepository = userProfileRepository;
         private readonly string _table = "users";

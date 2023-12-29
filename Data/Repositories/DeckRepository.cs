@@ -6,15 +6,10 @@ using System.Data;
 
 namespace mtcg.Data.Repositories
 {
-    public class DeckRepository
+    public class DeckRepository(IDbConnectionManager dbConnectionManager)
     {
-        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
         private readonly string _table = "deckCards";
-
-        public DeckRepository(DbConnectionManager dbConnectionManager)
-        {
-            _dbConnectionManager = dbConnectionManager;
-        }
 
         /// <summary>
         /// Fetches all cards in this user's deck

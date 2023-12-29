@@ -3,17 +3,11 @@ using mtcg.Data.Models;
 
 namespace mtcg.Data.Repositories
 {
-    public class PackageRepository
+    public class PackageRepository(IDbConnectionManager dbConnectionManager)
     {
-        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
         private readonly string _table = "packages";
-        private readonly CardRepository _cardRepository;
-
-        public PackageRepository(DbConnectionManager dbConnectionManager)
-        {
-            _dbConnectionManager = dbConnectionManager;
-            _cardRepository = new CardRepository(dbConnectionManager);
-        }
+        private readonly CardRepository _cardRepository = new(dbConnectionManager);
 
         /// <summary>
         /// Saves a new package with all new cards, updates an existing package, or throws an exception

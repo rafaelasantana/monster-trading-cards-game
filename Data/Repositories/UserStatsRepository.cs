@@ -1,20 +1,13 @@
 using Dapper;
 using mtcg.Data.Models;
-using System;
 using System.Data;
-using System.Linq;
 
 namespace mtcg.Data.Repositories
 {
-    public class UserStatsRepository
+    public class UserStatsRepository(IDbConnectionManager dbConnectionManager)
     {
-        private readonly DbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
         private readonly string _table = "userStats";
-
-        public UserStatsRepository(DbConnectionManager dbConnectionManager)
-        {
-            _dbConnectionManager = dbConnectionManager;
-        }
 
         /// <summary>
         /// Returns the stats for this user id
