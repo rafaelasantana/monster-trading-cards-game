@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using MTCG.Data.Models;
 using MTCG.Data.Repositories;
+using MTCG.Data.Services;
 using Newtonsoft.Json;
 
 namespace MTCG.Controllers
@@ -18,6 +19,7 @@ namespace MTCG.Controllers
         private readonly UserStatsRepository _userStatsRepository;
         private readonly TradingRepository _tradingRepository;
         private readonly BattleRepository _battleRepository;
+        private readonly BattleService _battleService;
         private readonly SessionManager _sessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
@@ -32,6 +34,7 @@ namespace MTCG.Controllers
             _userRepository = new UserRepository(dbConnectionManager, _userStatsRepository, _userProfileRepository);
             _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
             _battleRepository = new BattleRepository(dbConnectionManager);
+            _battleService = new BattleService(_deckRepository, _battleRepository, _userStatsRepository);
             _sessionManager = new SessionManager();
         }
 
@@ -634,22 +637,26 @@ namespace MTCG.Controllers
         {
             try
             {
-                // Validate the user
                 User user = ValidateTokenAndGetUser();
+                BattleResult battleResult = _battleService.RequestBattle(user.Id);
 
-                // Call the RequestBattle method and pass the user ID
-                int battleId = _battleRepository.RequestBattle(user.Id);
-
-                // Construct a response indicating the battle request status
-                if (battleId > 0)
+                // Check the status of the battle and construct an appropriate response
+                if (battleResult.Status == BattleStatus.Pending)
                 {
-                    string responseMessage = $"Battle requested successfully. Battle ID: {battleId}.";
-                    SendResponse(responseMessage, HttpStatusCode.OK);
-                    return;
+                    SendResponse($"Battle request is pending. Battle ID: {battleResult.BattleId}", HttpStatusCode.Accepted);
+                }
+                else if (battleResult.Status == BattleStatus.Completed)
+                {
+                    string resultMessage = $"Battle completed. Winner ID: {battleResult.WinnerId}.";
+                    if (battleResult.WinnerId == 0) // Assuming 0 indicates a draw or no winner
+                    {
+                        resultMessage = "The battle ended in a draw.";
+                    }
+                    SendResponse(resultMessage, HttpStatusCode.OK);
                 }
                 else
                 {
-                    SendResponse("Error requesting battle.", HttpStatusCode.InternalServerError);
+                    SendResponse("Battle could not be processed.", HttpStatusCode.BadRequest);
                 }
             }
             catch (Exception ex)
@@ -657,6 +664,8 @@ namespace MTCG.Controllers
                 SendResponse($"Error: {ex.Message}", HttpStatusCode.InternalServerError);
             }
         }
+
+
 
 
         /// <summary>

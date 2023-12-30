@@ -21,35 +21,23 @@ namespace MTCG.Data.Repositories
             _dbConnectionManager = dbConnectionManager;
         }
 
-        public int RequestBattle(int? playerId)
+        // Retrieves the first pending battle that doesn't have a second player set
+        public Battle GetPendingBattle()
         {
-            if (!playerId.HasValue)
+            using (var connection = _dbConnectionManager.GetConnection())
             {
-                throw new ArgumentNullException(nameof(playerId), "Player ID cannot be null.");
-            }
+                if (connection.State != ConnectionState.Open)
+                {
+                    connection.Open();
+                }
 
-            var connection = _dbConnectionManager.GetConnection();
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
+                string query = $"SELECT * FROM {_battlesTable} WHERE player2Id IS NULL AND status = 'pending' LIMIT 1";
 
-            var pendingBattle = connection.QueryFirstOrDefault<Battle>(
-                $"SELECT id, player1Id FROM {_battlesTable} WHERE player2Id IS NULL AND status = 'pending'");
-
-            if (pendingBattle != null && pendingBattle.Player1Id != playerId.Value)
-            {
-                // Update the pending battle with the current player as player2
-                connection.Execute($"UPDATE {_battlesTable} SET player2Id = @PlayerId, status = 'ongoing' WHERE id = @BattleId",
-                    new { PlayerId = playerId.Value, BattleId = pendingBattle.Id });
-                return pendingBattle.Id;
-            }
-            else
-            {
-                // Create a new pending battle
-                return CreatePendingBattle(playerId.Value);
+                var pendingBattle = connection.QueryFirstOrDefault<Battle>(query);
+                return pendingBattle;
             }
         }
+
 
         public int CreatePendingBattle(int? playerId)
         {
@@ -65,6 +53,27 @@ namespace MTCG.Data.Repositories
             // Execute the query and return the new battle's ID
             int newBattleId = connection.QuerySingle<int>(query, new { PlayerId = playerId });
             return newBattleId;
+        }
+
+        // Sets a player as player2 for a battle with a given ID and updates the battle status
+        public void SetPlayerForBattle(int battleId, int playerId)
+        {
+            using (var connection = _dbConnectionManager.GetConnection())
+            {
+                if (connection.State != ConnectionState.Open)
+                {
+                    connection.Open();
+                }
+
+                string updateQuery = $"UPDATE {_battlesTable} SET player2Id = @PlayerId, status = 'ongoing' WHERE id = @BattleId AND player2Id IS NULL";
+
+                int rowsAffected = connection.Execute(updateQuery, new { PlayerId = playerId, BattleId = battleId });
+
+                if (rowsAffected == 0)
+                {
+                    throw new InvalidOperationException("Could not set player for battle, or battle does not exist.");
+                }
+            }
         }
 
         // New method to save the outcome of a battle
@@ -85,10 +94,5 @@ namespace MTCG.Data.Repositories
             // Logic to retrieve the user's deck from the database
         }
 
-        // Method to update user stats after a battle
-        public void UpdateUserStatsAfterBattle(int userId, bool isWinner)
-        {
-            // Logic to update user stats based on the outcome of the battle
-        }
     }
 }
