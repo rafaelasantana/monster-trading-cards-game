@@ -102,6 +102,9 @@ namespace mtcg.Controllers
                 case "/tradings":
                     HandleCreateTradingDeal(json);
                     break;
+                case "/battles":
+                    HandleBattles();
+                    break;
                 default:
                     // Default response
                     SendResponse("Hello, this is the server!", HttpStatusCode.OK);
@@ -630,6 +633,25 @@ namespace mtcg.Controllers
             }
         }
 
+        public void HandleBattles()
+        {
+            try
+            {
+                string? token = ExtractAuthTokenFromHeader();
+                if (token == null)
+                {
+                    SendResponse("Authorization token is missing.", HttpStatusCode.Unauthorized);
+                    return;
+                }
+
+                User user = ValidateTokenAndGetUser();
+            }
+            catch (Exception ex)
+            {
+                SendResponse($"Error: {ex.Message}", HttpStatusCode.InternalServerError);
+            }
+        }
+
         /// <summary>
         /// Validates the token and returns the associated user, or throws an exception
         /// </summary>
@@ -638,17 +660,8 @@ namespace mtcg.Controllers
         private User ValidateTokenAndGetUser()
         {
             string? token = ExtractAuthTokenFromHeader();
-            string? username = _sessionManager.GetUserFromToken(token);
-            if (username == null)
-            {
-                throw new InvalidOperationException("Invalid or expired token.");
-            }
-
-            User? user = _userRepository.GetByUsername(username);
-            if (user == null)
-            {
-                throw new InvalidOperationException("User not found.");
-            }
+            string? username = _sessionManager.GetUserFromToken(token) ?? throw new InvalidOperationException("Invalid or expired token.");
+            User? user = _userRepository.GetByUsername(username) ?? throw new InvalidOperationException("User not found.");
             return user;
         }
 
