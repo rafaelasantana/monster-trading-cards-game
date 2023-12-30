@@ -61,7 +61,7 @@ namespace mtcg.Data.Repositories
 
                 // Create and save transaction
                 Transaction transactionRecord = new(user.Id, package.Id, package.Price);
-                this.Save(transactionRecord);
+                Save(transactionRecord);
 
                 errorMessage = string.Empty;
                 return true;

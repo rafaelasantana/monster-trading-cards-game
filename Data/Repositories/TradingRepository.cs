@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Data;
 using Dapper;
 using mtcg.Data.Models;
 
@@ -18,8 +15,12 @@ namespace mtcg.Data.Repositories
         /// <returns></returns>
         public IEnumerable<ExtendedTradingOffer> GetAllOffers()
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = @"
                 SELECT t.id as Id, t.ownerId as OwnerId, t.cardId as CardId,
@@ -39,8 +40,12 @@ namespace mtcg.Data.Repositories
         /// <returns></returns>
         public TradingOffer? GetOfferById(int offerId)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             return connection.QueryFirstOrDefault<TradingOffer>(
                 $"SELECT * FROM {_table} WHERE id = @Id;",
@@ -55,8 +60,12 @@ namespace mtcg.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public bool CreateOffer(TradingOffer offer)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             try
             {
@@ -82,8 +91,12 @@ namespace mtcg.Data.Repositories
         /// <returns></returns>
         public void CheckOffer(TradingOffer offer)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // Check if the card belongs to the user
             bool cardBelongsToUser = connection.QueryFirstOrDefault<bool>(
@@ -116,11 +129,19 @@ namespace mtcg.Data.Repositories
             }
         }
 
-
+        /// <summary>
+        /// Updates the status for an offer
+        /// </summary>
+        /// <param name="offerId"></param>
+        /// <param name="status"></param>
         public void UpdateOfferStatus(int offerId, string status)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = $"UPDATE {_table} SET status = @Status, updatedAt = CURRENT_TIMESTAMP WHERE id = @Id;";
             connection.Execute(query, new { OfferId = offerId, Status = status });
