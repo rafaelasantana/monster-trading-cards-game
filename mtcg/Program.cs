@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.Configuration;
-using mtcg.Data.Repositories;
-using mtcg.Controllers;
+using MTCG.Data.Repositories;
+using MTCG.Controllers;
 using Npgsql;
 
-namespace mtcg
+namespace MTCG
 {
     class Program
     {

@@ -1,7 +1,7 @@
 using Dapper;
 using Microsoft.EntityFrameworkCore;
-using mtcg.Data.Models;
-using mtcg.Data.Repositories;
+using MTCG.Data.Models;
+using MTCG.Data.Repositories;
 using Npgsql;
 using System.Data;
 

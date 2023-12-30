@@ -252,8 +252,8 @@ read -p "Press any key to resume ..." null
 
 # --------------------------------------------------
 echo "17) battle"
-curl -i -X POST http://localhost:10001/battles --header "Authorization: Bearer kienboec-mtcgToken" &
-curl -i -X POST http://localhost:10001/battles --header "Authorization: Bearer altenhof-mtcgToken" &
+curl -i -X POST http://localhost:10001/battles --header "Authorization: Bearer kienboec-mtcgToken" -d "" &
+curl -i -X POST http://localhost:10001/battles --header "Authorization: Bearer altenhof-mtcgToken" -d "" &
 wait
 
 read -p "Press any key to resume ..." null

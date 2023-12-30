@@ -20,7 +20,7 @@ namespace MTCG.Controllers
         private readonly BattleRepository _battleRepository;
         private readonly SessionManager _sessionManager;
 
-        public RequestHandler(HttpListenerContext context, IDbConnectionManager dbConnectionManager)
+        public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
         {
             _context = context;
             _userProfileRepository = new UserProfileRepository(dbConnectionManager);
@@ -496,12 +496,7 @@ namespace MTCG.Controllers
                 }
 
                 // Parse JSON payload to UserProfile object
-                var updatedProfile = JsonConvert.DeserializeObject<UserProfile>(json);
-
-                if (updatedProfile == null)
-                {
-                    throw new InvalidOperationException("Failed to parse user profile data.");
-                }
+                var updatedProfile = JsonConvert.DeserializeObject<UserProfile>(json) ?? throw new InvalidOperationException("Failed to parse user profile data.");
                 // Update user profile
                 _userProfileRepository.UpdateUserProfile(user.Id, updatedProfile);
 
@@ -586,7 +581,7 @@ namespace MTCG.Controllers
                 var trades = _tradingRepository.GetAllOffers();
 
                 // Check if there are open tradings
-                if (trades.Count() == 0)
+                if (!trades.Any())
                 {
                     SendResponse("There are no open tradings.", HttpStatusCode.OK);
                 }
@@ -639,13 +634,7 @@ namespace MTCG.Controllers
         {
             try
             {
-                string? token = ExtractAuthTokenFromHeader();
-                if (token == null)
-                {
-                    SendResponse("Authorization token is missing.", HttpStatusCode.Unauthorized);
-                    return;
-                }
-
+                // Validate the user
                 User user = ValidateTokenAndGetUser();
 
                 // Call the RequestBattle method and pass the user ID
@@ -656,6 +645,7 @@ namespace MTCG.Controllers
                 {
                     string responseMessage = $"Battle requested successfully. Battle ID: {battleId}.";
                     SendResponse(responseMessage, HttpStatusCode.OK);
+                    return;
                 }
                 else
                 {
