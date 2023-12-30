@@ -1,7 +1,7 @@
 using System.Net;
-using mtcg.Data.Repositories;
+using MTCG.Data.Repositories;
 
-namespace mtcg.Controllers
+namespace MTCG.Controllers
 {
     public class HttpServer
     {

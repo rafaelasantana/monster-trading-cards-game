@@ -1,4 +1,4 @@
-namespace mtcg.Data.Models
+namespace MTCG.Data.Models
 {
     public class Transaction
     {

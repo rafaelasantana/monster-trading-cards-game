@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Data;
+using Dapper;
+using MTCG.Data.Models;
 
 namespace MTCG.Data.Repositories
 {
@@ -13,7 +16,7 @@ namespace MTCG.Data.Repositories
         private readonly string _battleFields = "id, player1Id, player2Id, status, startTime, endTime, winnerId";
         private readonly string _battleLogFields = "id, battleId, roundNumber, player1CardId, player2CardId, roundResult, createdAt";
 
-        public BattlesRepository(IDbConnectionManager dbConnectionManager)
+        public BattleRepository(IDbConnectionManager dbConnectionManager)
         {
             _dbConnectionManager = dbConnectionManager;
         }

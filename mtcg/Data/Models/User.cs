@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace mtcg.Data.Models
+namespace MTCG.Data.Models
 {
     public class User
     {

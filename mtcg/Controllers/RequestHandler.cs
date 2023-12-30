@@ -1,10 +1,10 @@
 using System.Net;
 using System.Text;
-using mtcg.Data.Models;
-using mtcg.Data.Repositories;
+using MTCG.Data.Models;
+using MTCG.Data.Repositories;
 using Newtonsoft.Json;
 
-namespace mtcg.Controllers
+namespace MTCG.Controllers
 {
     public class RequestHandler
     {
@@ -17,9 +17,10 @@ namespace mtcg.Controllers
         private readonly DeckRepository _deckRepository;
         private readonly UserStatsRepository _userStatsRepository;
         private readonly TradingRepository _tradingRepository;
+        private readonly BattleRepository _battleRepository;
         private readonly SessionManager _sessionManager;
 
-        public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
+        public RequestHandler(HttpListenerContext context, IDbConnectionManager dbConnectionManager)
         {
             _context = context;
             _userProfileRepository = new UserProfileRepository(dbConnectionManager);
@@ -30,6 +31,7 @@ namespace mtcg.Controllers
             _tradingRepository = new TradingRepository(dbConnectionManager);
             _userRepository = new UserRepository(dbConnectionManager, _userStatsRepository, _userProfileRepository);
             _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
+            _battleRepository = new BattleRepository(dbConnectionManager);
             _sessionManager = new SessionManager();
         }
 
@@ -645,12 +647,27 @@ namespace mtcg.Controllers
                 }
 
                 User user = ValidateTokenAndGetUser();
+
+                // Call the RequestBattle method and pass the user ID
+                int battleId = _battleRepository.RequestBattle(user.Id);
+
+                // Construct a response indicating the battle request status
+                if (battleId > 0)
+                {
+                    string responseMessage = $"Battle requested successfully. Battle ID: {battleId}.";
+                    SendResponse(responseMessage, HttpStatusCode.OK);
+                }
+                else
+                {
+                    SendResponse("Error requesting battle.", HttpStatusCode.InternalServerError);
+                }
             }
             catch (Exception ex)
             {
                 SendResponse($"Error: {ex.Message}", HttpStatusCode.InternalServerError);
             }
         }
+
 
         /// <summary>
         /// Validates the token and returns the associated user, or throws an exception

@@ -1,7 +1,7 @@
 using Npgsql;
 using System.Data;
 
-namespace mtcg.Data.Repositories
+namespace MTCG.Data.Repositories
 {
     public class DbConnectionManager(IDbConnection dbConnection) : IDbConnectionManager
     {

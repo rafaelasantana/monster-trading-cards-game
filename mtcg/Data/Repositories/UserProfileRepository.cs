@@ -1,8 +1,8 @@
 using System.Data;
 using Dapper;
-using mtcg.Data.Models;
+using MTCG.Data.Models;
 
-namespace mtcg.Data.Repositories
+namespace MTCG.Data.Repositories
 {
     public class UserProfileRepository(IDbConnectionManager dbConnectionManager)
     {

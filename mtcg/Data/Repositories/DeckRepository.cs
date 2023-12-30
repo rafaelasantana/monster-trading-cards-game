@@ -1,10 +1,10 @@
 using System;
 using Dapper;
-using mtcg.Data.Models;
+using MTCG.Data.Models;
 using System.Data;
 
 
-namespace mtcg.Data.Repositories
+namespace MTCG.Data.Repositories
 {
     public class DeckRepository(IDbConnectionManager dbConnectionManager)
     {

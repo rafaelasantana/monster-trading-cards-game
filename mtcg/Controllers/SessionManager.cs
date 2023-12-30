@@ -1,4 +1,4 @@
-namespace mtcg.Controllers
+namespace MTCG.Controllers
 {
     public class SessionManager
     {

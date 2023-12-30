@@ -1,4 +1,4 @@
-namespace mtcg.Data.Repositories
+namespace MTCG.Data.Repositories
 {
     public interface IDbConnectionManager
     {

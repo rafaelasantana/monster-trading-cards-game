@@ -1,18 +1,13 @@
 using Dapper;
-using mtcg.Data.Models;
+using MTCG.Data.Models;
 
-namespace mtcg.Data.Repositories
+namespace MTCG.Data.Repositories
 {
-    public class CardRepository
+    public class CardRepository(IDbConnectionManager dbConnectionManager)
     {
-        private readonly IDbConnectionManager _dbConnectionManager;
+        private readonly IDbConnectionManager _dbConnectionManager = dbConnectionManager;
         private readonly string _table = "cards";
         private readonly string _fields = "id, name, damage, elementType, cardType, packageId, ownerId";
-
-        public CardRepository(IDbConnectionManager dbConnectionManager)
-        {
-            _dbConnectionManager = dbConnectionManager;
-        }
 
         /// <summary>
         /// Saves a new card to the database or updates an existing card

@@ -1,6 +1,6 @@
 using Newtonsoft.Json.Linq;
 
-namespace mtcg.Data.Models
+namespace MTCG.Data.Models
 {
     public class Package
     {
