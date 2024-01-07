@@ -19,8 +19,12 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public List<Card> GetDeckByUserId(int? userId)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = @"
                 SELECT cards.*
@@ -39,8 +43,12 @@ namespace MTCG.Data.Repositories
 
         public bool ConfigureDeck(int? userId, string[] cardIds)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // Begin transaction
             using var transaction = connection.BeginTransaction();

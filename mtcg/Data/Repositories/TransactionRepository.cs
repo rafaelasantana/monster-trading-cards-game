@@ -1,3 +1,4 @@
+using System.Data;
 using Dapper;
 using MTCG.Data.Models;
 
@@ -17,8 +18,11 @@ namespace MTCG.Data.Repositories
         public void Save(Transaction transaction)
         {
             // open connection
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
             // Save the transaction to the database
             var query = $"INSERT INTO {_table} (userId, packageId, price) VALUES (@UserId, @PackageId, @Price)";
             connection.Execute(query, transaction);
@@ -32,8 +36,12 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public bool PurchasePackage(User user, out string errorMessage)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             try
             {

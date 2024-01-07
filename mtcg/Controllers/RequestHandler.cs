@@ -654,6 +654,11 @@ namespace MTCG.Controllers
                     }
                     SendResponse(resultMessage, HttpStatusCode.OK);
                 }
+                else if (battleResult.Status == BattleStatus.Ongoing)
+                {
+                    SendResponse($"Battle is ongoing. Battle ID: {battleResult.BattleId}", HttpStatusCode.Accepted);
+
+                }
                 else
                 {
                     SendResponse("Battle could not be processed.", HttpStatusCode.BadRequest);

@@ -1,3 +1,4 @@
+using System.Data;
 using Dapper;
 using MTCG.Data.Models;
 
@@ -38,8 +39,12 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public void Update(Package package)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // Prepare the query to update the package
             var query = $"UPDATE packages SET price = @Price, ownerId = @OwnerId WHERE Id = @Id";
@@ -72,8 +77,12 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         private void SaveNew(Package package)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // insert new package and return the generated Id
             int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_table} (price, ownerId) VALUES (@Price, @OwnerId) RETURNING Id", package);
@@ -120,9 +129,12 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         private bool HasExistingCard(Package package)
         {
-            // open database connection
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // get this package's cards
             var cards = package.GetCards();
@@ -147,8 +159,11 @@ namespace MTCG.Data.Repositories
         public Package? GetNextAvailablePackage()
         {
             // open connection
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // Select a package with no owner yet
             var query = "SELECT * FROM packages WHERE OwnerId IS NULL LIMIT 1;";
@@ -165,8 +180,11 @@ namespace MTCG.Data.Repositories
         public void AssignPackageToUser(Package package, User user)
         {
             // open connection
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             try
             {

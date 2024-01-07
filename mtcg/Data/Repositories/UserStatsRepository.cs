@@ -16,8 +16,12 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public UserStats? GetStatsByUserId(int? userId)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = $"SELECT * FROM { _table } WHERE userId = @UserId";
             return connection.Query<UserStats>(query, new { UserId = userId }).FirstOrDefault();
@@ -29,8 +33,12 @@ namespace MTCG.Data.Repositories
         /// <param name="stats"></param>
         public void UpdateStats(UserStats stats)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = $@"
                 UPDATE { _table }
@@ -65,8 +73,12 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public IEnumerable<Scoreboard>? GetScoreboardData()
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             return connection.Query<Scoreboard>("SELECT username, elorating FROM scoreboard;");
         }

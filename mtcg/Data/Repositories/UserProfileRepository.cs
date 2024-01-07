@@ -12,8 +12,12 @@ namespace MTCG.Data.Repositories
 
         public UserProfile? GetUserProfile(int? userId)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             return connection.QueryFirstOrDefault<UserProfile>(
                 $"SELECT * FROM { _table } WHERE userId = @UserId;",
@@ -34,8 +38,12 @@ namespace MTCG.Data.Repositories
 
         public void UpdateUserProfile(int? userId, UserProfile updatedProfile)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // Check if the profile already exists
             var existingProfile = GetUserProfile(userId);

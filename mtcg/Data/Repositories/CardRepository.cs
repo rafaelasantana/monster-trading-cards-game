@@ -1,3 +1,4 @@
+using System.Data;
 using Dapper;
 using MTCG.Data.Models;
 
@@ -15,8 +16,12 @@ namespace MTCG.Data.Repositories
         /// <param name="card"></param>
         public void Save(Card card)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             // check if card exists on the database
             int count = connection.QueryFirstOrDefault<int>($"SELECT COUNT(*) FROM {_table} WHERE id = @Id", new { card.Id });
@@ -40,8 +45,12 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public void Update(Card card)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = $"UPDATE {_table} SET name=@Name, damage=@Damage, elementType=@ElementType::ElementType, cardType=@CardType::CardType, packageId=@PackageId, ownerId=@OwnerId WHERE id=@Id";
             int rowsAffected = connection.Execute(query, card);
@@ -57,8 +66,12 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public List<Card> GetCardsByUserId(int? userId)
         {
-            using var connection = _dbConnectionManager.GetConnection();
-            connection.Open();
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
             var query = "SELECT * FROM cards WHERE ownerId = @UserId";
             return connection.Query<Card>(query, new { UserId = userId }).ToList();

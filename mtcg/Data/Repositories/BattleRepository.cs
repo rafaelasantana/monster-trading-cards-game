@@ -22,22 +22,21 @@ namespace MTCG.Data.Repositories
         }
 
         // Retrieves the first pending battle that doesn't have a second player set
-        public Battle GetPendingBattle()
+        public Battle? GetPendingBattle()
         {
-            using (var connection = _dbConnectionManager.GetConnection())
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                if (connection.State != ConnectionState.Open)
-                {
-                    connection.Open();
-                }
-
-                string query = $"SELECT * FROM {_battlesTable} WHERE player2Id IS NULL AND status = 'pending' LIMIT 1";
-
-                var pendingBattle = connection.QueryFirstOrDefault<Battle>(query);
-                return pendingBattle;
+                connection.Open();
             }
-        }
 
+            string query = $"SELECT * FROM {_battlesTable} WHERE player2Id IS NULL AND status = 'pending' LIMIT 1";
+
+            var pendingBattle = connection.QueryFirstOrDefault<Battle>(query);
+            return pendingBattle;
+
+        }
 
         public int CreatePendingBattle(int? playerId)
         {
@@ -56,43 +55,70 @@ namespace MTCG.Data.Repositories
         }
 
         // Sets a player as player2 for a battle with a given ID and updates the battle status
-        public void SetPlayerForBattle(int battleId, int playerId)
+        public void SetPlayerForBattle(int? battleId, int? playerId)
         {
-            using (var connection = _dbConnectionManager.GetConnection())
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                if (connection.State != ConnectionState.Open)
-                {
-                    connection.Open();
-                }
-
-                string updateQuery = $"UPDATE {_battlesTable} SET player2Id = @PlayerId, status = 'ongoing' WHERE id = @BattleId AND player2Id IS NULL";
-
-                int rowsAffected = connection.Execute(updateQuery, new { PlayerId = playerId, BattleId = battleId });
-
-                if (rowsAffected == 0)
-                {
-                    throw new InvalidOperationException("Could not set player for battle, or battle does not exist.");
-                }
+                connection.Open();
             }
+
+            string updateQuery = $"UPDATE {_battlesTable} SET player2Id = @PlayerId, status = 'ongoing' WHERE id = @BattleId AND player2Id IS NULL";
+
+            int rowsAffected = connection.Execute(updateQuery, new { PlayerId = playerId, BattleId = battleId });
+
+            if (rowsAffected == 0)
+            {
+                throw new InvalidOperationException("Could not set player for battle, or battle does not exist.");
+            }
+
         }
 
-        // New method to save the outcome of a battle
-        public void SaveBattleOutcome(BattleResult battleResult)
+        public Battle GetBattleById(int? battleId)
         {
-            // Logic to save the battle result to the database
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            string query = $"SELECT * FROM {_battlesTable} WHERE id = @BattleId";
+            return connection.QueryFirstOrDefault<Battle>(query, new { BattleId = battleId });
+
         }
 
-        // New method to log a battle round
-        public void LogBattleRound(int battleId, RoundResult roundResult)
+        public void UpdateBattleStatus(int? battleId, string newStatus)
         {
-            // Logic to log the round details to the database
+            // open connection
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            string updateQuery = $"UPDATE {_battlesTable} SET status = @NewStatus WHERE id = @BattleId";
+            connection.Execute(updateQuery, new { NewStatus = newStatus, BattleId = battleId });
         }
 
-        // New method to retrieve a deck for a user
-        public List<Card> GetDeckForUser(int userId)
-        {
-            // Logic to retrieve the user's deck from the database
-        }
+        // // New method to save the outcome of a battle
+        // public void SaveBattleOutcome(BattleResult battleResult)
+        // {
+        //     // Logic to save the battle result to the database
+        // }
+
+        // // New method to log a battle round
+        // public void LogBattleRound(int battleId, RoundResult roundResult)
+        // {
+        //     // Logic to log the round details to the database
+        // }
+
+        // // New method to retrieve a deck for a user
+        // public List<Card> GetDeckForUser(int userId)
+        // {
+        //     // Logic to retrieve the user's deck from the database
+        // }
 
     }
 }
