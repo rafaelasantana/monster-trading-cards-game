@@ -6,7 +6,7 @@ using System.Data;
 
 namespace MTCG.Test
 {
-    public class TradingRepositoryTest
+    public class TradingTests
     {
         private IDbConnection _dbConnection;
         private TradingRepository _tradingRepository;
