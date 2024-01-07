@@ -2,28 +2,28 @@ using Dapper;
 using Microsoft.EntityFrameworkCore;
 using MTCG.Data.Models;
 using MTCG.Data.Repositories;
+using MTCG.Data.Services;
 using Npgsql;
 using System.Data;
 
 namespace MTCG.Test
 {
-    public class UserRepositoryTest
+    public class UserTests
     {
         private IDbConnection _dbConnection;
         private UserRepository _userRepository;
         private UserStatsRepository _userStatsRepository;
         private UserProfileRepository _userProfileRepository;
+        private UserService _userService;
 
         [SetUp]
         public void Setup()
         {
             _dbConnection = new NpgsqlConnection("Host=localhost;Port=5434;Database=mtcg-testdb;Username=mtcg-test-user;Password=mtcgpassword;");
-            // Create instances of UserStatsRepository and UserProfileRepository
             _userStatsRepository = new UserStatsRepository(new DbConnectionManager(_dbConnection));
             _userProfileRepository = new UserProfileRepository(new DbConnectionManager(_dbConnection));
-
-            // Create an instance of UserRepository
             _userRepository = new UserRepository(new DbConnectionManager(_dbConnection), _userStatsRepository, _userProfileRepository);
+            _userService = new UserService(_userRepository, _userStatsRepository, _userProfileRepository);
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace MTCG.Test
             _dbConnection.Execute($"INSERT INTO users (username, password) VALUES (@Username, @Password)", newUser);
 
             // Act
-            User loginUser = _userRepository.LoginUser(newUser.Username, "validPassword");
+            User loginUser = _userService.LoginUser(newUser.Username, "validPassword");
 
             // Assert
             Assert.That(loginUser, Is.Not.Null, "User should not be null");
@@ -105,7 +105,7 @@ namespace MTCG.Test
             var newUser = new User { Username = "testUser_" + Guid.NewGuid().ToString(), Password = "testPassword" };
 
             // Act
-            _userRepository.RegisterUser(newUser);
+            _userService.RegisterUser(newUser);
 
             // Assert - Check if the user is added to the database
             var userInDb = _dbConnection.Query<User>($"SELECT * FROM users WHERE username = @Username", new { newUser.Username }).FirstOrDefault();

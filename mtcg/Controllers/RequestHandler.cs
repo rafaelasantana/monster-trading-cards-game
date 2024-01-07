@@ -20,6 +20,7 @@ namespace MTCG.Controllers
         private readonly TradingRepository _tradingRepository;
         private readonly BattleRepository _battleRepository;
         private readonly BattleService _battleService;
+        private readonly UserService _userService;
         private readonly SessionManager _sessionManager;
 
         public RequestHandler(HttpListenerContext context, DbConnectionManager dbConnectionManager)
@@ -35,6 +36,7 @@ namespace MTCG.Controllers
             _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
             _battleRepository = new BattleRepository(dbConnectionManager);
             _battleService = new BattleService(_deckRepository, _battleRepository, _userStatsRepository);
+            _userService = new UserService(_userRepository, _userStatsRepository, _userProfileRepository);
             _sessionManager = new SessionManager();
         }
 
@@ -209,7 +211,7 @@ namespace MTCG.Controllers
                     return;
                 }
 
-                _userRepository.RegisterUser(newUser);
+                _userService.RegisterUser(newUser);
 
                 // Registration successful
                 string successResponse = "User registered successfully!";
@@ -248,7 +250,7 @@ namespace MTCG.Controllers
                     return;
                 }
 
-                User registeredUser = _userRepository.LoginUser(loginUser.Username, loginUser.Password);
+                User registeredUser = _userService.LoginUser(loginUser.Username, loginUser.Password);
 
                 // Ensure that the username is not null
                 if (string.IsNullOrEmpty(registeredUser.Username))
