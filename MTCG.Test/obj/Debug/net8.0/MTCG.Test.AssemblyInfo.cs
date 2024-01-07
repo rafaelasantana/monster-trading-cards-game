@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MTCG.Test")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b5c86b0969226f4a2d9be43f445e9f32e141c57e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0ebc1ecae4a553426e44ee49bde772223d807724")]
 [assembly: System.Reflection.AssemblyProductAttribute("MTCG.Test")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MTCG.Test")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

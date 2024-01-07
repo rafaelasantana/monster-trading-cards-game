@@ -163,9 +163,9 @@ namespace MTCG.Test
         public void Cleanup()
         {
             // Cleanup all test users and related data
-            _dbConnection.Execute("DELETE FROM userprofiles WHERE userid IN (SELECT id FROM users WHERE username LIKE 'testUser_%')");
-            _dbConnection.Execute("DELETE FROM userstats WHERE userid IN (SELECT id FROM users WHERE username LIKE 'testUser_%')");
-            _dbConnection.Execute("DELETE FROM users WHERE username LIKE 'testUser_%'");
+            _dbConnection.Execute("DELETE FROM userprofiles");
+            _dbConnection.Execute("DELETE FROM userstats");
+            _dbConnection.Execute("DELETE FROM users");
         }
 
 

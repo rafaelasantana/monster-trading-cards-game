@@ -61,7 +61,6 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public bool CreateOffer(TradingOffer offer)
         {
-            Console.WriteLine("In CreateOffer");
             // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
@@ -227,7 +226,5 @@ namespace MTCG.Data.Repositories
             connection.Execute("DELETE FROM tradings WHERE id = @TradingId", new { TradingId = tradingId });
             return true;
         }
-
-
     }
 }
