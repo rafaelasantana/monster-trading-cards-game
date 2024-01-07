@@ -21,6 +21,9 @@ namespace MTCG.Test
             SetupTestData();
         }
 
+        /// <summary>
+        /// Creates test data
+        /// </summary>
         private void SetupTestData()
         {
             // Create test users and cards
@@ -34,6 +37,14 @@ namespace MTCG.Test
         }
 
 
+        /// <summary>
+        /// Helper method to create a card
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="damage"></param>
+        /// <param name="ownerId"></param>
+        /// <param name="inDeck"></param>
+        /// <param name="cardType"></param>
         private void CreateTestCard(string name, double damage, int ownerId, bool inDeck, string cardType)
         {
             var cardId = Guid.NewGuid().ToString();
@@ -49,7 +60,14 @@ namespace MTCG.Test
             }
         }
 
-
+        /// <summary>
+        /// Helper method to create a trading offer
+        /// </summary>
+        /// <param name="ownerId"></param>
+        /// <param name="cardId"></param>
+        /// <param name="requestedType"></param>
+        /// <param name="minDamage"></param>
+        /// <returns></returns>
         private string CreateTestTradingOffer(int ownerId, string cardId, string requestedType, int minDamage)
         {
             var tradingId = Guid.NewGuid().ToString();
@@ -59,7 +77,12 @@ namespace MTCG.Test
             return tradingId;
         }
 
-
+        /// <summary>
+        /// Helper method to create an user
+        /// </summary>
+        /// <param name="username"></param>
+        /// <param name="password"></param>
+        /// <returns></returns>
         private int CreateTestUser(string username, string password)
         {
             return _dbConnection.ExecuteScalar<int>(
@@ -67,6 +90,9 @@ namespace MTCG.Test
                 new { Username = username, Password = password });
         }
 
+        /// <summary>
+        /// Tries to create a trading with a card that is in the user's deck, should throw exception
+        /// </summary>
         [Test]
         public void CreateOffer_CardInUsersDeck_ShouldNotCreateOfferAndThrowException()
         {
@@ -91,8 +117,9 @@ namespace MTCG.Test
             Assert.That(offerInDb, Is.Null);
         }
 
-
-
+        /// <summary>
+        /// Successfully creates an offer
+        /// </summary>
         [Test]
         public void CreateOffer_CardNotInUsersDeck_SuccessfullyCreatesOffer()
         {
@@ -120,6 +147,9 @@ namespace MTCG.Test
             Assert.That(offerInDb.OwnerId, Is.EqualTo(testUserId), "Offer should belong to the correct user");
         }
 
+        /// <summary>
+        /// Tries to trade with oneself, should fail
+        /// </summary>
         [Test]
         public void ExecuteTrade_TradeWithOneself_ShouldFail()
         {
@@ -142,7 +172,9 @@ namespace MTCG.Test
             }
         }
 
-
+        /// <summary>
+        /// Executes a trade meeting all requirements
+        /// </summary>
         [Test]
         public void ExecuteTrade_ValidTradeConditions_ShouldBeSuccessful()
         {
@@ -169,6 +201,9 @@ namespace MTCG.Test
             }
         }
 
+        /// <summary>
+        /// Tries to trade without meeting all requirements, should fail
+        /// </summary>
         [Test]
         public void ExecuteTrade_InvalidTradeConditions_ShouldFail()
         {
@@ -196,6 +231,9 @@ namespace MTCG.Test
             }
         }
 
+        /// <summary>
+        /// Tries to trade a card that is in the user's deck, should fail
+        /// </summary>
         [Test]
         public void ExecuteTrade_CardInUsersDeck_ShouldFail()
         {
@@ -222,6 +260,9 @@ namespace MTCG.Test
             }
         }
 
+        /// <summary>
+        /// Deletes test data
+        /// </summary>
         [TearDown]
         public void Cleanup()
         {
