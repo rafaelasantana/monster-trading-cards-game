@@ -132,3 +132,4 @@
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG.Test/obj/Debug/net8.0/MTCG.Test.genruntimeconfig.cache
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG.Test/obj/Debug/net8.0/ref/MTCG.Test.dll
 /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG.Test/bin/Debug/net8.0/Microsoft.EntityFrameworkCore.InMemory.dll
+/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG.Test/obj/Debug/net8.0/MTCG.Test.sourcelink.json

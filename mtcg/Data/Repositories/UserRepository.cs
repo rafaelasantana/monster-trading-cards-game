@@ -68,7 +68,6 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public User? GetByUsername(string? username)
         {
-            Console.WriteLine("In GetByUsername...");
             // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)

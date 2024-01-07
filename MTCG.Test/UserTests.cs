@@ -96,6 +96,22 @@ namespace MTCG.Test
         }
 
         /// <summary>
+        /// Tries to login with an invalid password, should throw exception and respond with error
+        /// </summary>
+        [Test]
+        public void LoginUser_WithInvalidCredentials_ShouldThrowException()
+        {
+            // Arrange - Create and register a user with a unique username
+            var validUsername = "testUser_" + Guid.NewGuid().ToString();
+            var validUser = new User { Username = validUsername, Password = "validPassword" };
+            _userService.RegisterUser(validUser);
+
+            // Act & Assert
+            var ex = Assert.Throws<InvalidOperationException>(() => _userService.LoginUser(validUsername, "invalidPassword"));
+            Assert.That(ex.Message, Is.EqualTo("Invalid username or password."));
+        }
+
+        /// <summary>
         /// Registers a new user and saves user data to the database
         /// </summary>
         [Test]
@@ -119,6 +135,25 @@ namespace MTCG.Test
             // Assert - Check if the user stats are created
             var userStatsInDb = _dbConnection.Query<UserStats>($"SELECT * FROM userstats WHERE userid = @UserId", new { UserId = userInDb.Id }).FirstOrDefault();
             Assert.That(userStatsInDb, Is.Not.Null, "User stats should be created for the new user");
+        }
+
+        /// <summary>
+        /// Tries to register an username that already exists, should throw exception and respond with error
+        /// </summary>
+        [Test]
+        public void RegisterUser_WithExistingUsername_ShouldThrowException()
+        {
+            // Arrange - Create and register a user with a unique username
+            var existingUsername = "testUser_" + Guid.NewGuid().ToString();
+            var existingUser = new User { Username = existingUsername, Password = "password" };
+            _userService.RegisterUser(existingUser);
+
+            // Attempt to register a new user with the same username
+            var newUserWithSameUsername = new User { Username = existingUsername, Password = "newPassword" };
+
+            // Act & Assert
+            var ex = Assert.Throws<InvalidOperationException>(() => _userService.RegisterUser(newUserWithSameUsername));
+            Assert.That(ex.Message, Is.EqualTo("Username already exists!"));
         }
 
         /// <summary>

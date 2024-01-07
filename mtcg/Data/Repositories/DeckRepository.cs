@@ -43,6 +43,12 @@ namespace MTCG.Data.Repositories
 
         public bool ConfigureDeck(int? userId, string[] cardIds)
         {
+            // Check if the number of cards is exactly four
+            if (cardIds.Length != 4)
+            {
+                throw new ArgumentException("The deck must contain exactly 4 cards.");
+            }
+
             // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
