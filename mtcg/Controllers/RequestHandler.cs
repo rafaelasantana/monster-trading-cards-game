@@ -5,6 +5,7 @@ using MTCG.Data.Repositories;
 using MTCG.Data.Services;
 using Newtonsoft.Json;
 
+
 namespace MTCG.Controllers
 {
     public class RequestHandler
@@ -64,6 +65,10 @@ namespace MTCG.Controllers
                 {
                     HandlePUT(json);
                 }
+                else if (method == "DELETE")
+                {
+                    HandleDELETE();
+                }
                 else
                 {
                     // Default response for non-POST requests
@@ -92,6 +97,10 @@ namespace MTCG.Controllers
             }
             string path = _context.Request.Url.AbsolutePath;
 
+            if (path.StartsWith("/tradings/"))
+            {
+                HandleCreateTradingRequest(json, path);
+            }
             switch (path)
             {
                 case "/users":
@@ -196,6 +205,25 @@ namespace MTCG.Controllers
             }
         }
 
+        /// <summary>
+        /// Handles DELETE requests
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
+        private void HandleDELETE()
+        {
+            // Check for nulls in the object chain
+            if (_context == null || _context.Request == null || _context.Request.Url == null)
+            {
+                throw new InvalidOperationException("Request context is not properly initialized.");
+            }
+
+            string path = _context.Request.Url.AbsolutePath;
+            if (path.StartsWith("/tradings/"))
+            {
+                HandleDeleteTrading(path);
+            }
+
+        }
         /// <summary>
         /// Registers a new user, creates a user profile, and user stats, or sends an error response if the user already exists
         /// </summary>
@@ -616,7 +644,6 @@ namespace MTCG.Controllers
                     return;
                 }
 
-                // Rest of your code with tradeOfferJson...
                 var tradeOffer = new TradingOffer
                 {
                     Id = tradeOfferJson.Id ?? Guid.NewGuid().ToString(),
@@ -635,6 +662,74 @@ namespace MTCG.Controllers
             }
         }
 
+        /// <summary>
+        /// Handles a trading request
+        /// </summary>
+        /// <param name="json"></param>
+        /// <param name="path"></param>
+        private void HandleCreateTradingRequest(string json, string path)
+        {
+            try
+            {
+                User user = ValidateTokenAndGetUser();
+                string tradingId = path.Split('/')[2];
+
+                // Directly use the json string as the card ID
+                string userCardId = json.Trim(['\"']); // Removes surrounding quotes
+
+                if (string.IsNullOrEmpty(userCardId))
+                {
+                    SendResponse("Invalid JSON format.", HttpStatusCode.BadRequest);
+                    return;
+                }
+
+                bool isTradeSuccessful = _tradingRepository.ExecuteTrade(tradingId, user.Id, userCardId);
+
+                if (isTradeSuccessful)
+                {
+                    SendResponse("Trade executed successfully!", HttpStatusCode.OK);
+                }
+                else
+                {
+                    SendResponse("Trade execution failed.", HttpStatusCode.BadRequest);
+                }
+            }
+            catch (Exception ex)
+            {
+                SendResponse($"Error: {ex.Message}", HttpStatusCode.BadRequest);
+            }
+        }
+
+        /// <summary>
+        /// Deletes a trading deal belonging to this user or sends an error response
+        /// </summary>
+        /// <param name="path"></param>
+        public void HandleDeleteTrading(string path)
+        {
+            try
+            {
+                User user = ValidateTokenAndGetUser();
+                string tradingId = path.Split('/')[2];
+                bool isDeleted = _tradingRepository.DeleteOffer(tradingId, user.Id);
+
+                if (isDeleted)
+                {
+                    SendResponse("Trading offer deleted successfully.", HttpStatusCode.OK);
+                }
+                else
+                {
+                    SendResponse("Failed to delete trading offer.", HttpStatusCode.BadRequest);
+                }
+            }
+            catch (Exception ex)
+            {
+                SendResponse($"Error: {ex.Message}", HttpStatusCode.InternalServerError);
+            }
+        }
+
+        /// <summary>
+        /// Handles battles
+        /// </summary>
         public void HandleBattles()
         {
             try
@@ -671,9 +766,6 @@ namespace MTCG.Controllers
                 SendResponse($"Error: {ex.Message}", HttpStatusCode.InternalServerError);
             }
         }
-
-
-
 
         /// <summary>
         /// Validates the token and returns the associated user, or throws an exception
@@ -750,9 +842,9 @@ namespace MTCG.Controllers
         /// </summary>
         /// <param name="cards"></param>
         /// <returns></returns>
-        private string CreatePlainTextResponse(List<Card> cards)
+        private static string CreatePlainTextResponse(List<Card> cards)
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
             foreach (var card in cards)
             {
                 sb.AppendLine($"Id: {card.Id}, Name: {card.Name}, Damage: {card.Damage}");
@@ -779,12 +871,4 @@ namespace MTCG.Controllers
             }
         }
     }
-    public class TradeOfferJsonModel
-    {
-        public string? Id { get; set; }
-        public string? CardToTrade { get; set; }
-        public string? Type { get; set; }
-        public int? MinimumDamage { get; set; }
-    }
-
 }

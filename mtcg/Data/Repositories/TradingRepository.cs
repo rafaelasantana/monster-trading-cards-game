@@ -40,6 +40,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public TradingOffer? GetOfferById(int offerId)
         {
+            Console.WriteLine("In GetOfferById");
             // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
@@ -49,7 +50,7 @@ namespace MTCG.Data.Repositories
 
             return connection.QueryFirstOrDefault<TradingOffer>(
                 $"SELECT * FROM {_table} WHERE id = @Id;",
-                new { OfferId = offerId });
+                new { id = offerId });
         }
 
         /// <summary>
@@ -60,6 +61,7 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public bool CreateOffer(TradingOffer offer)
         {
+            Console.WriteLine("In CreateOffer");
             // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
@@ -130,21 +132,102 @@ namespace MTCG.Data.Repositories
         }
 
         /// <summary>
-        /// Updates the status for an offer
+        /// Executes trade if all conditions are met
         /// </summary>
-        /// <param name="offerId"></param>
-        /// <param name="status"></param>
-        public void UpdateOfferStatus(int offerId, string status)
+        /// <param name="tradingId"></param>
+        /// <param name="userId"></param>
+        /// <param name="userCardId"></param>
+        /// <returns></returns>
+        public bool ExecuteTrade(string? tradingId, int? userId, string? userCardId)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
 
-            var query = $"UPDATE {_table} SET status = @Status, updatedAt = CURRENT_TIMESTAMP WHERE id = @Id;";
-            connection.Execute(query, new { OfferId = offerId, Status = status });
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                // Retrieve the trading offer
+                var offer = connection.QueryFirstOrDefault<TradingOffer>(
+                    "SELECT * FROM tradings WHERE id = @TradingId AND status = 'open'",
+                    new { TradingId = tradingId }, transaction) ?? throw new InvalidOperationException("Trading offer not found or not open.");
+
+                // Check if the user is trying to trade with oneself
+                if (offer.OwnerId == userId)
+                {
+                    throw new InvalidOperationException("Trading with oneself is not allowed.");
+                }
+
+                // Validate that the user's card is eligible for trade
+                var userCard = connection.QueryFirstOrDefault<Card>(
+                    "SELECT * FROM cards WHERE id = @UserCardId AND ownerId = @UserId",
+                    new { UserCardId = userCardId, UserId = userId }, transaction) ?? throw new InvalidOperationException("User's card not found or does not belong to the user.");
+
+                // Check if the card is in the user's deck
+                var isInDeck = connection.QueryFirstOrDefault<bool>(
+                    "SELECT COUNT(1) FROM deckCards WHERE cardId = @UserCardId AND ownerId = @UserId",
+                    new { UserCardId = userCardId, UserId = userId }, transaction);
+
+                if (isInDeck) throw new InvalidOperationException("User's card is in the deck and cannot be traded.");
+
+                // Validate trade conditions (requested card type, minimum damage)
+                if ((offer.RequestedType != null &&
+                    (userCard.CardType == null || !userCard.CardType.Equals(offer.RequestedType, StringComparison.OrdinalIgnoreCase))) ||
+                    (userCard.Damage < offer.MinDamage))
+                {
+                    throw new InvalidOperationException("User's card does not meet the trade requirements.");
+                }
+
+                // Perform the trade
+                connection.Execute(
+                    "UPDATE cards SET ownerId = @OwnerId WHERE id = @CardId",
+                    new { OwnerId = userId, CardId = offer.CardId }, transaction);
+                connection.Execute(
+                    "UPDATE cards SET ownerId = @OwnerId WHERE id = @CardId",
+                    new { OwnerId = offer.OwnerId, CardId = userCardId }, transaction);
+
+                // Update the trading offer status
+                connection.Execute(
+                    "UPDATE tradings SET status = 'closed' WHERE id = @TradingId",
+                    new { TradingId = tradingId }, transaction);
+
+                transaction.Commit();
+                return true;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
         }
+
+        /// <summary>
+        /// Deletes an offer belonging to the user or throws an exception
+        /// </summary>
+        /// <param name="tradingId"></param>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public bool DeleteOffer(string? tradingId, int? userId)
+        {
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+
+            // Check if the offer exists and belongs to the user
+            var offer = connection.QueryFirstOrDefault<TradingOffer>(
+                "SELECT * FROM tradings WHERE id = @TradingId AND ownerId = @OwnerId",
+                new { TradingId = tradingId, OwnerId = userId }) ?? throw new InvalidOperationException("Trading offer not found or does not belong to the user.");
+
+            // Delete the offer
+            connection.Execute("DELETE FROM tradings WHERE id = @TradingId", new { TradingId = tradingId });
+            return true;
+        }
+
+
     }
 }
