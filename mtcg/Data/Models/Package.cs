@@ -29,7 +29,6 @@ namespace MTCG.Data.Models
 
         private void AddCardsFromJson(string json)
         {
-            Console.WriteLine(json);
             Cards = new List<Card>();
 
             JArray cardArray = JArray.Parse(json);

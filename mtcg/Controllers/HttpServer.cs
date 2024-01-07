@@ -13,35 +13,45 @@ namespace MTCG.Controllers
             _listener = new HttpListener();
             _listener.Prefixes.Add(prefix);
             _dbConnectionManager = dbConnectionManager;
-            // start server
+
+            // Start server
             Start();
         }
 
-        // starts the HTTP server
         public void Start()
         {
-            // start server
             _listener.Start();
             Console.WriteLine($"Listening for requests on {_listener.Prefixes.FirstOrDefault() ?? "No prefixes"}");
 
-            // handle incoming requests
-            while (true)
+            // Run request handling in a separate task
+            Task.Run(() => HandleRequests());
+        }
+
+        private void HandleRequests()
+        {
+            while (_listener.IsListening)
             {
-                // get context from the request
-                HttpListenerContext context = _listener.GetContext();
-                // create a request handler
-                var requestHandler = new RequestHandler(context, _dbConnectionManager);
-                // handle the request
-                requestHandler.HandleRequest();
+                // GetContextAsync to avoid blocking the main thread
+                var contextTask = _listener.GetContextAsync();
+
+                // Wait for the client to connect
+                contextTask.Wait();
+
+                var context = contextTask.Result;
+
+                // Handle each request in a new task
+                Task.Run(() =>
+                {
+                    var requestHandler = new RequestHandler(context, _dbConnectionManager);
+                    requestHandler.HandleRequest();
+                });
             }
         }
 
-        // stops the HTTP server
         public void Stop()
         {
             _listener.Stop();
             _listener.Close();
         }
-
     }
 }

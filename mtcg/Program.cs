@@ -29,6 +29,20 @@ namespace MTCG
 
             // Create HTTP server
             HttpServer server = new(serverUrl, dbConnectionManager);
+
+            // Keep the main thread alive
+            ManualResetEvent quitEvent = new(false);
+            Console.CancelKeyPress += (sender, eArgs) => {
+                quitEvent.Set();
+                eArgs.Cancel = true;
+            };
+
+            // Wait here until CTRL-C is received.
+            Console.WriteLine("Server is running. Press CTRL-C to stop.");
+            quitEvent.WaitOne();
+
+            // Stop the server before exiting
+            server.Stop();
         }
     }
 }

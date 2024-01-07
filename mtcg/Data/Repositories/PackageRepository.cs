@@ -191,11 +191,9 @@ namespace MTCG.Data.Repositories
                 // Update the OwnerId of the package
                 var packageUpdateQuery = "UPDATE packages SET OwnerId = @OwnerId WHERE Id = @PackageId";
                 connection.Execute(packageUpdateQuery, new { OwnerId = user.Id, PackageId = package.Id });
-                Console.WriteLine("updated packages with user id");
                 // Update the owner of all cards in the package
                 var cardUpdateQuery = "UPDATE cards SET ownerId = @OwnerId WHERE PackageId = @PackageId";
                 connection.Execute(cardUpdateQuery, new { OwnerId = user.Id, PackageId = package.Id });
-                Console.WriteLine("updated cards with user id");
             }
             catch (Exception ex)
             {
