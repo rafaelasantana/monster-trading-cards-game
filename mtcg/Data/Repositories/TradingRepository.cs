@@ -1,6 +1,7 @@
 using System.Data;
-using Dapper;
 using MTCG.Data.Models;
+using MTCG.Data.Services;
+using Npgsql;
 
 namespace MTCG.Data.Repositories
 {
@@ -15,23 +16,31 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public IEnumerable<ExtendedTradingOffer> GetAllOffers()
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
 
-            var query = @"
-                SELECT t.id as Id, t.ownerId as OwnerId, t.cardId as CardId,
-                    c.name as CardName, c.damage as Damage, c.elementType::TEXT as ElementType,
-                    t.requestedType as RequestedType, t.minDamage as MinDamage, t.status as Status
-                FROM tradings t
-                INNER JOIN cards c ON t.cardId = c.id
-                WHERE t.status = 'open'";
+            var query = @"SELECT t.id as Id, t.ownerId as OwnerId, t.cardId as CardId,
+                        c.name as CardName, c.damage as Damage, c.elementType::TEXT as ElementType,
+                        t.requestedType as RequestedType, t.minDamage as MinDamage, t.status as Status
+                        FROM tradings t
+                        INNER JOIN cards c ON t.cardId = c.id
+                        WHERE t.status = 'open'";
 
-            return connection.Query<ExtendedTradingOffer>(query);
+            var offers = new List<ExtendedTradingOffer>();
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var offer = DataMapperService.MapToObject<ExtendedTradingOffer>(reader);
+                offers.Add(offer);
+            }
+
+            return offers;
         }
+
 
         /// <summary>
         /// Returns the offer with this id
@@ -40,18 +49,26 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public TradingOffer? GetOfferById(int offerId)
         {
-            Console.WriteLine("In GetOfferById");
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
 
-            return connection.QueryFirstOrDefault<TradingOffer>(
-                $"SELECT * FROM {_table} WHERE id = @Id;",
-                new { id = offerId });
+            var query = $"SELECT * FROM {_table} WHERE id = @Id;";
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+            command.Parameters.AddWithValue("@Id", offerId);
+
+            TradingOffer? offer = null;
+            using var reader = command.ExecuteReader();
+            if (reader.Read())
+            {
+                offer = DataMapperService.MapToObject<TradingOffer>(reader);
+            }
+
+            return offer;
         }
+
 
         /// <summary>
         /// Checks if the offer meets all requirements and pushes it to the trading store
@@ -61,7 +78,6 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public bool CreateOffer(TradingOffer offer)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
@@ -75,15 +91,23 @@ namespace MTCG.Data.Repositories
 
                 // If all checks pass, proceed with creating the offer
                 var query = $"INSERT INTO {_table} (id, ownerId, cardId, requestedType, minDamage) VALUES (@Id, @OwnerId, @CardId, @RequestedType, @MinDamage);";
-                connection.Execute(query, offer);
+
+                using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+                command.Parameters.AddWithValue("@Id", offer.Id!);
+                command.Parameters.AddWithValue("@OwnerId", offer.OwnerId!);
+                command.Parameters.AddWithValue("@CardId", offer.CardId!);
+                command.Parameters.AddWithValue("@RequestedType", offer.RequestedType ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@MinDamage", offer.MinDamage!);
+
+                command.ExecuteNonQuery();
                 return true;
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException(ex.Message);
             }
-
         }
+
 
         /// <summary>
         /// Checks if the card has all requirements to be pushed to the trading store
@@ -92,7 +116,6 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public void CheckOffer(TradingOffer offer)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
@@ -100,35 +123,41 @@ namespace MTCG.Data.Repositories
             }
 
             // Check if the card belongs to the user
-            bool cardBelongsToUser = connection.QueryFirstOrDefault<bool>(
-                "SELECT COUNT(1) > 0 FROM cards WHERE ownerId = @OwnerId AND id = @CardId",
-                new { OwnerId = offer.OwnerId, CardId = offer.CardId });
-
+            var cardBelongsToUserQuery = "SELECT COUNT(*) FROM cards WHERE ownerId = @OwnerId AND id = @CardId";
+            using var cardBelongsToUserCommand = new NpgsqlCommand(cardBelongsToUserQuery, connection as NpgsqlConnection);
+            cardBelongsToUserCommand.Parameters.AddWithValue("@OwnerId", offer.OwnerId!);
+            cardBelongsToUserCommand.Parameters.AddWithValue("@CardId", offer.CardId!);
+            var cardBelongsToUserResult = cardBelongsToUserCommand.ExecuteScalar();
+            bool cardBelongsToUser = cardBelongsToUserResult != null && Convert.ToInt64(cardBelongsToUserResult) > 0;
             if (!cardBelongsToUser)
             {
                 throw new InvalidOperationException("The card does not belong to the user.");
             }
 
-            // Check if the card is in the user's deckopen
-            bool cardInDeck = connection.QueryFirstOrDefault<bool>(
-                "SELECT COUNT(1) > 0 FROM deckCards WHERE ownerId = @OwnerId AND cardId = @CardId",
-                new { OwnerId = offer.OwnerId, CardId = offer.CardId });
-
+            // Check if the card is in the user's deck
+            var cardInDeckQuery = "SELECT COUNT(*) FROM deckCards WHERE ownerId = @OwnerId AND cardId = @CardId";
+            using var cardInDeckCommand = new NpgsqlCommand(cardInDeckQuery, connection as NpgsqlConnection);
+            cardInDeckCommand.Parameters.AddWithValue("@OwnerId", offer.OwnerId!);
+            cardInDeckCommand.Parameters.AddWithValue("@CardId", offer.CardId!);
+            var cardInDeckResult = cardInDeckCommand.ExecuteScalar();
+            bool cardInDeck = cardInDeckResult != null && Convert.ToInt64(cardInDeckResult) > 0;
             if (cardInDeck)
             {
                 throw new InvalidOperationException("The card is in the user's deck.");
             }
 
             // Check if the card is already in trading
-            bool cardInTrading = connection.QueryFirstOrDefault<bool>(
-                "SELECT COUNT(1) > 0 FROM tradings WHERE cardId = @CardId AND status = 'open'",
-                new { CardId = offer.CardId });
-
+            var cardInTradingQuery = "SELECT COUNT(*) FROM tradings WHERE cardId = @CardId AND status = 'open'";
+            using var cardInTradingCommand = new NpgsqlCommand(cardInTradingQuery, connection as NpgsqlConnection);
+            cardInTradingCommand.Parameters.AddWithValue("@CardId", offer.CardId!);
+            var cardInTradingResult = cardInTradingCommand.ExecuteScalar();
+            bool cardInTrading = cardInTradingResult != null && Convert.ToInt64(cardInTradingResult) > 0;
             if (cardInTrading)
             {
                 throw new InvalidOperationException("The card is already in trading.");
             }
         }
+
 
         /// <summary>
         /// Executes trade if all conditions are met
@@ -136,7 +165,7 @@ namespace MTCG.Data.Repositories
         /// <param name="tradingId"></param>
         /// <param name="userId"></param>
         /// <param name="userCardId"></param>
-        /// <returns></returns>
+                /// <returns></returns>
         public bool ExecuteTrade(string? tradingId, int? userId, string? userCardId)
         {
             var connection = _dbConnectionManager.GetConnection();
@@ -150,29 +179,48 @@ namespace MTCG.Data.Repositories
             try
             {
                 // Retrieve the trading offer
-                var offer = connection.QueryFirstOrDefault<TradingOffer>(
-                    "SELECT * FROM tradings WHERE id = @TradingId AND status = 'open'",
-                    new { TradingId = tradingId }, transaction) ?? throw new InvalidOperationException("Trading offer not found or not open.");
+                var offerQuery = $"SELECT * FROM {_table} WHERE id = @TradingId AND status = 'open'";
+                using var offerCommand = new NpgsqlCommand(offerQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                offerCommand.Parameters.AddWithValue("@TradingId", tradingId!);
+                TradingOffer? offer = null;
+                using (var offerReader = offerCommand.ExecuteReader())
+                {
+                    if (offerReader.Read())
+                    {
+                        offer = DataMapperService.MapToObject<TradingOffer>(offerReader);
+                    }
+                }
+                if (offer == null) throw new InvalidOperationException("Trading offer not found or not open.");
 
-                // Check if the user is trying to trade with oneself
                 if (offer.OwnerId == userId)
                 {
                     throw new InvalidOperationException("Trading with oneself is not allowed.");
                 }
 
                 // Validate that the user's card is eligible for trade
-                var userCard = connection.QueryFirstOrDefault<Card>(
-                    "SELECT * FROM cards WHERE id = @UserCardId AND ownerId = @UserId",
-                    new { UserCardId = userCardId, UserId = userId }, transaction) ?? throw new InvalidOperationException("User's card not found or does not belong to the user.");
+                var userCardQuery = "SELECT * FROM cards WHERE id = @UserCardId AND ownerId = @UserId";
+                using var userCardCommand = new NpgsqlCommand(userCardQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                userCardCommand.Parameters.AddWithValue("@UserCardId", userCardId!);
+                userCardCommand.Parameters.AddWithValue("@UserId", userId!);
+                Card? userCard = null;
+                using (var userCardReader = userCardCommand.ExecuteReader())
+                {
+                    if (userCardReader.Read())
+                    {
+                        userCard = DataMapperService.MapToObject<Card>(userCardReader);
+                    }
+                }
+                if (userCard == null) throw new InvalidOperationException("User's card not found or does not belong to the user.");
 
                 // Check if the card is in the user's deck
-                var isInDeck = connection.QueryFirstOrDefault<bool>(
-                    "SELECT COUNT(1) FROM deckCards WHERE cardId = @UserCardId AND ownerId = @UserId",
-                    new { UserCardId = userCardId, UserId = userId }, transaction);
-
+                var isInDeckQuery = "SELECT COUNT(1) FROM deckCards WHERE cardId = @UserCardId AND ownerId = @UserId";
+                using var isInDeckCommand = new NpgsqlCommand(isInDeckQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                isInDeckCommand.Parameters.AddWithValue("@UserCardId", userCardId!);
+                isInDeckCommand.Parameters.AddWithValue("@UserId", userId!);
+                var isInDeckResult = isInDeckCommand.ExecuteScalar();
+                bool isInDeck = isInDeckResult != null && (long)isInDeckResult > 0;
                 if (isInDeck) throw new InvalidOperationException("User's card is in the deck and cannot be traded.");
 
-                // Validate trade conditions (requested card type, minimum damage)
                 if ((offer.RequestedType != null &&
                     (userCard.CardType == null || !userCard.CardType.Equals(offer.RequestedType, StringComparison.OrdinalIgnoreCase))) ||
                     (userCard.Damage < offer.MinDamage))
@@ -181,17 +229,23 @@ namespace MTCG.Data.Repositories
                 }
 
                 // Perform the trade
-                connection.Execute(
-                    "UPDATE cards SET ownerId = @OwnerId WHERE id = @CardId",
-                    new { OwnerId = userId, CardId = offer.CardId }, transaction);
-                connection.Execute(
-                    "UPDATE cards SET ownerId = @OwnerId WHERE id = @CardId",
-                    new { OwnerId = offer.OwnerId, CardId = userCardId }, transaction);
+                var updateCardOwnerQuery1 = "UPDATE cards SET ownerId = @OwnerId WHERE id = @CardId";
+                using var updateCardOwnerCommand1 = new NpgsqlCommand(updateCardOwnerQuery1, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                updateCardOwnerCommand1.Parameters.AddWithValue("@OwnerId", userId!);
+                updateCardOwnerCommand1.Parameters.AddWithValue("@CardId", offer.CardId!);
+                updateCardOwnerCommand1.ExecuteNonQuery();
+
+                var updateCardOwnerQuery2 = "UPDATE cards SET ownerId = @OwnerId WHERE id = @CardId";
+                using var updateCardOwnerCommand2 = new NpgsqlCommand(updateCardOwnerQuery2, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                updateCardOwnerCommand2.Parameters.AddWithValue("@OwnerId", offer.OwnerId!);
+                updateCardOwnerCommand2.Parameters.AddWithValue("@CardId", userCardId!);
+                updateCardOwnerCommand2.ExecuteNonQuery();
 
                 // Update the trading offer status
-                connection.Execute(
-                    "UPDATE tradings SET status = 'closed' WHERE id = @TradingId",
-                    new { TradingId = tradingId }, transaction);
+                var updateTradingStatusQuery = $"UPDATE {_table} SET status = 'closed' WHERE id = @TradingId";
+                using var updateTradingStatusCommand = new NpgsqlCommand(updateTradingStatusQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                updateTradingStatusCommand.Parameters.AddWithValue("@TradingId", tradingId!);
+                updateTradingStatusCommand.ExecuteNonQuery();
 
                 transaction.Commit();
                 return true;
@@ -202,6 +256,7 @@ namespace MTCG.Data.Repositories
                 throw;
             }
         }
+
 
         /// <summary>
         /// Deletes an offer belonging to the user or throws an exception
@@ -218,13 +273,28 @@ namespace MTCG.Data.Repositories
             }
 
             // Check if the offer exists and belongs to the user
-            var offer = connection.QueryFirstOrDefault<TradingOffer>(
-                "SELECT * FROM tradings WHERE id = @TradingId AND ownerId = @OwnerId",
-                new { TradingId = tradingId, OwnerId = userId }) ?? throw new InvalidOperationException("Trading offer not found or does not belong to the user.");
+            var offerQuery = "SELECT * FROM tradings WHERE id = @TradingId AND ownerId = @OwnerId";
+            using (var offerCommand = new NpgsqlCommand(offerQuery, connection as NpgsqlConnection))
+            {
+                offerCommand.Parameters.AddWithValue("@TradingId", tradingId!);
+                offerCommand.Parameters.AddWithValue("@OwnerId", userId!);
+
+                using var reader = offerCommand.ExecuteReader();
+                if (!reader.Read())
+                {
+                    throw new InvalidOperationException("Trading offer not found or does not belong to the user.");
+                }
+            }
 
             // Delete the offer
-            connection.Execute("DELETE FROM tradings WHERE id = @TradingId", new { TradingId = tradingId });
+            var deleteQuery = "DELETE FROM tradings WHERE id = @TradingId";
+            using var deleteCommand = new NpgsqlCommand(deleteQuery, connection as NpgsqlConnection);
+            deleteCommand.Parameters.AddWithValue("@TradingId", tradingId!);
+            deleteCommand.ExecuteNonQuery();
+
             return true;
         }
+
+
     }
 }
