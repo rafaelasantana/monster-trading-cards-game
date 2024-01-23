@@ -22,7 +22,7 @@ namespace MTCG.Test
             _dbConnection = new NpgsqlConnection("Host=localhost;Port=5434;Database=mtcg-testdb;Username=mtcg-test-user;Password=mtcgpassword;");
             _userStatsRepository = new UserStatsRepository(new DbConnectionManager(_dbConnection));
             _userProfileRepository = new UserProfileRepository(new DbConnectionManager(_dbConnection));
-            _userRepository = new UserRepository(new DbConnectionManager(_dbConnection), _userStatsRepository, _userProfileRepository);
+            _userRepository = new UserRepository(new DbConnectionManager(_dbConnection));
             _userService = new UserService(_userRepository, _userStatsRepository, _userProfileRepository);
         }
 

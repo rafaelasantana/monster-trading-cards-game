@@ -1,21 +1,20 @@
-using Dapper;
+using System.Data;
 using MTCG.Data.Models;
 using MTCG.Data.Repositories;
 using Npgsql;
-using System.Data;
 
 namespace MTCG.Test
 {
     public class TradingTests
     {
-        private IDbConnection _dbConnection;
+        private NpgsqlConnection _connection;
         private TradingRepository _tradingRepository;
 
         [SetUp]
         public void Setup()
         {
-            _dbConnection = new NpgsqlConnection("Host=localhost;Port=5434;Database=mtcg-testdb;Username=mtcg-test-user;Password=mtcgpassword;");
-            _tradingRepository = new TradingRepository(new DbConnectionManager(_dbConnection));
+            _connection = new NpgsqlConnection("Host=localhost;Port=5434;Database=mtcg-testdb;Username=mtcg-test-user;Password=mtcgpassword;");
+            _tradingRepository = new TradingRepository(new DbConnectionManager(_connection));
 
             // Set up test data
             SetupTestData();
@@ -47,18 +46,33 @@ namespace MTCG.Test
         /// <param name="cardType"></param>
         private void CreateTestCard(string name, double damage, int ownerId, bool inDeck, string cardType)
         {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
             var cardId = Guid.NewGuid().ToString();
-            _dbConnection.Execute(
+            using var command = new NpgsqlCommand(
                 "INSERT INTO cards (id, name, damage, ownerId, cardType) VALUES (@Id, @Name, @Damage, @OwnerId, @CardType::CardType)",
-                new { Id = cardId, Name = name, Damage = damage, OwnerId = ownerId, CardType = cardType });
+                _connection);
+            command.Parameters.AddWithValue("@Id", cardId);
+            command.Parameters.AddWithValue("@Name", name);
+            command.Parameters.AddWithValue("@Damage", damage);
+            command.Parameters.AddWithValue("@OwnerId", ownerId);
+            command.Parameters.AddWithValue("@CardType", cardType);
+            command.ExecuteNonQuery();
 
             if (inDeck)
             {
-                _dbConnection.Execute(
+                using var deckCommand = new NpgsqlCommand(
                     "INSERT INTO deckCards (cardId, ownerId) VALUES (@CardId, @OwnerId)",
-                    new { CardId = cardId, OwnerId = ownerId });
+                    _connection);
+                deckCommand.Parameters.AddWithValue("@CardId", cardId);
+                deckCommand.Parameters.AddWithValue("@OwnerId", ownerId);
+                deckCommand.ExecuteNonQuery();
             }
         }
+
 
         /// <summary>
         /// Helper method to create a trading offer
@@ -70,25 +84,47 @@ namespace MTCG.Test
         /// <returns></returns>
         private string CreateTestTradingOffer(int ownerId, string cardId, string requestedType, int minDamage)
         {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
             var tradingId = Guid.NewGuid().ToString();
-            _dbConnection.Execute(
+            using var command = new NpgsqlCommand(
                 "INSERT INTO tradings (id, ownerId, cardId, requestedType, minDamage) VALUES (@Id, @OwnerId, @CardId, @RequestedType, @MinDamage)",
-                new { Id = tradingId, OwnerId = ownerId, CardId = cardId, RequestedType = requestedType, MinDamage = minDamage });
+                _connection);
+            command.Parameters.AddWithValue("@Id", tradingId);
+            command.Parameters.AddWithValue("@OwnerId", ownerId);
+            command.Parameters.AddWithValue("@CardId", cardId);
+            command.Parameters.AddWithValue("@RequestedType", requestedType ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@MinDamage", minDamage);
+
+            command.ExecuteNonQuery();
             return tradingId;
         }
+
 
         /// <summary>
         /// Helper method to create an user
         /// </summary>
         /// <param name="username"></param>
         /// <param name="password"></param>
-        /// <returns></returns>
+        /// <returns>The created user id or 0 (invalid user id)</returns>
         private int CreateTestUser(string username, string password)
         {
-            return _dbConnection.ExecuteScalar<int>(
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
+            using var command = new NpgsqlCommand(
                 "INSERT INTO users (username, password) VALUES (@Username, @Password) RETURNING id",
-                new { Username = username, Password = password });
+                _connection);
+            command.Parameters.AddWithValue("@Username", username);
+            command.Parameters.AddWithValue("@Password", password);
+            return (int?)command.ExecuteScalar() ?? 0;
         }
+
 
         /// <summary>
         /// Tries to create a trading with a card that is in the user's deck, should throw exception
@@ -96,9 +132,13 @@ namespace MTCG.Test
         [Test]
         public void CreateOffer_CardInUsersDeck_ShouldNotCreateOfferAndThrowException()
         {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
             // Arrange
-            var testUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser1'");
-            var testCardId = _dbConnection.ExecuteScalar<string>("SELECT id FROM cards WHERE name = 'testCardInDeck1'");
+            var testUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
+            var testCardId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'testCardInDeck1'");
 
             var offer = new TradingOffer
             {
@@ -113,9 +153,68 @@ namespace MTCG.Test
             Assert.That(ex.Message, Is.EqualTo("The card is in the user's deck."));
 
             // Assert that no new offer was created in the database
-            var offerInDb = _dbConnection.Query<TradingOffer>("SELECT * FROM tradings WHERE ownerId = @OwnerId AND cardId = @CardId", new { OwnerId = testUserId, CardId = testCardId }).FirstOrDefault();
-            Assert.That(offerInDb, Is.Null);
+            var offerExists = CheckIfOfferExists(testUserId, testCardId);
+            Assert.That(offerExists, Is.False);
         }
+
+        /// <summary>
+        /// Retrieves the scalar value from a query
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        private T? GetScalarValue<T>(string query)
+        {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
+            using var command = new NpgsqlCommand(query, _connection);
+            var result = command.ExecuteScalar();
+
+            // Check if result is DBNull or null
+            if (result == DBNull.Value || result == null)
+            {
+                // Handle the case where T is a value type and cannot be null
+                if (Nullable.GetUnderlyingType(typeof(T)) == null && typeof(T).IsValueType)
+                {
+                    throw new InvalidOperationException("Query returned null, but a non-nullable value type was expected.");
+                }
+
+                // Return default value for nullable types or reference types
+                return default;
+            }
+
+            // Safely cast the result to T
+            return (T)result;
+        }
+
+        /// <summary>
+        /// Checks if an offer exists on the database
+        /// </summary>
+        /// <param name="ownerId"></param>
+        /// <param name="cardId"></param>
+        /// <returns></returns>
+        private bool CheckIfOfferExists(int ownerId, string? cardId)
+        {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
+            if (string.IsNullOrEmpty(cardId)) return false;
+
+            using var command = new NpgsqlCommand(
+                "SELECT COUNT(*) FROM tradings WHERE ownerId = @OwnerId AND cardId = @CardId",
+                _connection);
+            command.Parameters.AddWithValue("@OwnerId", ownerId);
+            command.Parameters.AddWithValue("@CardId", cardId);
+            var result = command.ExecuteScalar();
+            return result != null && (long)result > 0;
+        }
+
 
         /// <summary>
         /// Successfully creates an offer
@@ -123,9 +222,14 @@ namespace MTCG.Test
         [Test]
         public void CreateOffer_CardNotInUsersDeck_SuccessfullyCreatesOffer()
         {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
             // Arrange
-            var testUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser1'");
-            var testCardNotInDeckId = _dbConnection.ExecuteScalar<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
+            var testUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
+            var testCardNotInDeckId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
 
             var offer = new TradingOffer
             {
@@ -137,14 +241,11 @@ namespace MTCG.Test
             };
 
             // Act
-            bool result = _tradingRepository.CreateOffer(offer);
+            _tradingRepository.CreateOffer(offer);
 
             // Assert
-            Assert.That(result, Is.True, "Offer should be created successfully");
-
-            var offerInDb = _dbConnection.Query<TradingOffer>("SELECT * FROM tradings WHERE cardId = @CardId", new { CardId = testCardNotInDeckId }).FirstOrDefault();
-            Assert.That(offerInDb, Is.Not.Null, "Offer should be in the database");
-            Assert.That(offerInDb.OwnerId, Is.EqualTo(testUserId), "Offer should belong to the correct user");
+            var offerInDb = CheckIfOfferExists(testUserId, testCardNotInDeckId);
+            Assert.That(offerInDb, Is.True, "Offer should be created successfully and be in the database");
         }
 
         /// <summary>
@@ -153,24 +254,22 @@ namespace MTCG.Test
         [Test]
         public void ExecuteTrade_TradeWithOneself_ShouldFail()
         {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
             // Arrange
-            var testUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser1'");
-            var testCardId = _dbConnection.ExecuteScalar<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
+            var testUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
+            var testCardId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
 
-            // Check if testCardId is null
-            if (testCardId == null)
-            {
-                Assert.Fail("Test card 'testCardNotInDeck1' not found in the database.");
-            }
-            else
-            {
-                var tradingId = CreateTestTradingOffer(testUserId, testCardId, "spell", 50); // Example: assuming these are the offer's conditions
+            var tradingId = CreateTestTradingOffer(testUserId, testCardId!, "spell", 50);
 
-                // Act & Assert
-                var ex = Assert.Throws<InvalidOperationException>(() => _tradingRepository.ExecuteTrade(tradingId, testUserId, testCardId));
-                Assert.That(ex.Message, Is.EqualTo("Trading with oneself is not allowed."));
-            }
+            // Act & Assert
+            var ex = Assert.Throws<InvalidOperationException>(() => _tradingRepository.ExecuteTrade(tradingId, testUserId, testCardId));
+            Assert.That(ex.Message, Is.EqualTo("Trading with oneself is not allowed."));
         }
+
 
         /// <summary>
         /// Executes a trade meeting all requirements
@@ -178,9 +277,14 @@ namespace MTCG.Test
         [Test]
         public void ExecuteTrade_ValidTradeConditions_ShouldBeSuccessful()
         {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
             // Arrange
-            var offerUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser1'");
-            var offerCardId = _dbConnection.ExecuteScalar<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
+            var offerUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
+            var offerCardId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
             if (offerCardId == null)
             {
                 Assert.Fail("Test card 'testCardNotInDeck1' not found in the database.");
@@ -189,9 +293,9 @@ namespace MTCG.Test
             {
                 var tradingId = CreateTestTradingOffer(offerUserId, offerCardId, "monster", 150);
 
-                var tradeUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser2'");
+                var tradeUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser2'");
                 CreateTestCard("HighDamageCard", 200, tradeUserId, false, "Monster");
-                var tradeCardId = _dbConnection.ExecuteScalar<string>("SELECT id FROM cards WHERE name = 'HighDamageCard'");
+                var tradeCardId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'HighDamageCard'");
 
                 // Act
                 bool result = _tradingRepository.ExecuteTrade(tradingId, tradeUserId, tradeCardId);
@@ -207,9 +311,14 @@ namespace MTCG.Test
         [Test]
         public void ExecuteTrade_InvalidTradeConditions_ShouldFail()
         {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
             // Arrange
-            var offerUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser1'");
-            var offerCardId = _dbConnection.ExecuteScalar<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
+            var offerUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
+            var offerCardId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
             if (offerCardId == null)
             {
                 Assert.Fail("Test card 'testCardNotInDeck1' not found in the database.");
@@ -219,15 +328,14 @@ namespace MTCG.Test
                 var tradingId = CreateTestTradingOffer(offerUserId, offerCardId, "monster", 100); // example: monster, 100 damage
 
                 // Create a card with insufficient damage
-                var tradeUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser2'");
+                var tradeUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser2'");
                 var lowDamageCardName = "LowDamageCard";
                 CreateTestCard(lowDamageCardName, 30, tradeUserId, false, "Monster"); // example: Monster type, 30 damage
-                var lowDamageCardId = _dbConnection.ExecuteScalar<string>($"SELECT id FROM cards WHERE name = '{lowDamageCardName}'");
+                var lowDamageCardId = GetScalarValue<string>($"SELECT id FROM cards WHERE name = '{lowDamageCardName}'");
 
                 // Act & Assert
                 var ex = Assert.Throws<InvalidOperationException>(() => _tradingRepository.ExecuteTrade(tradingId, tradeUserId, lowDamageCardId));
                 Assert.That(ex.Message, Is.EqualTo("User's card does not meet the trade requirements."));
-
             }
         }
 
@@ -237,28 +345,33 @@ namespace MTCG.Test
         [Test]
         public void ExecuteTrade_CardInUsersDeck_ShouldFail()
         {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
             // Arrange
-            var offerUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser1'");
-            var offerCardId = _dbConnection.ExecuteScalar<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
+            var offerUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
+            var offerCardId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'testCardNotInDeck1'");
             if (offerCardId == null)
             {
                 Assert.Fail("Test card 'testCardNotInDeck1' not found in the database.");
             }
             else
             {
-                var tradingId = CreateTestTradingOffer(offerUserId, offerCardId, "monster", 100); // example: monster, 100 damage
+                var tradingId = CreateTestTradingOffer(offerUserId, offerCardId, "monster", 100);
 
-                var tradeUserId = _dbConnection.ExecuteScalar<int>("SELECT id FROM users WHERE username = 'testUser2'");
+                var tradeUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser2'");
                 var inDeckCardName = "InDeckCard";
-                CreateTestCard(inDeckCardName, 200, tradeUserId, true, "Monster"); // example: Monster type, 200 damage
-                var inDeckCardId = _dbConnection.ExecuteScalar<string>($"SELECT id FROM cards WHERE name = '{inDeckCardName}'");
+                CreateTestCard(inDeckCardName, 200, tradeUserId, true, "Monster");
+                var inDeckCardId = GetScalarValue<string>($"SELECT id FROM cards WHERE name = '{inDeckCardName}'");
 
                 // Act & Assert
                 var ex = Assert.Throws<InvalidOperationException>(() => _tradingRepository.ExecuteTrade(tradingId, tradeUserId, inDeckCardId));
                 Assert.That(ex.Message, Is.EqualTo("User's card is in the deck and cannot be traded."));
-
             }
         }
+
 
         /// <summary>
         /// Deletes test data
@@ -266,11 +379,23 @@ namespace MTCG.Test
         [TearDown]
         public void Cleanup()
         {
-            _dbConnection.Execute("DELETE FROM tradings");
-            _dbConnection.Execute("DELETE FROM deckCards");
-            _dbConnection.Execute("DELETE FROM cards");
-            _dbConnection.Execute("DELETE FROM users");
+            DeleteTestData("tradings");
+            DeleteTestData("deckCards");
+            DeleteTestData("cards");
+            DeleteTestData("users");
         }
+
+        private void DeleteTestData(string tableName)
+        {
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
+            using var command = new NpgsqlCommand($"DELETE FROM {tableName}", _connection);
+            command.ExecuteNonQuery();
+        }
+
 
     }
 }
