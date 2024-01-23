@@ -1,6 +1,8 @@
 using System.Data;
 using Dapper;
 using MTCG.Data.Models;
+using MTCG.Data.Services;
+using Npgsql;
 
 namespace MTCG.Data.Repositories
 {
@@ -50,11 +52,15 @@ namespace MTCG.Data.Repositories
             var query = $"UPDATE packages SET price = @Price, ownerId = @OwnerId WHERE Id = @Id";
 
             // Execute the update query
-            var rowsAffected = connection.Execute(query, new { package.Price, package.OwnerId, package.Id });
+            using var updateCommand = new NpgsqlCommand(query, connection as NpgsqlConnection);
+            updateCommand.Parameters.AddWithValue("@Price", package.Price!);
+            updateCommand.Parameters.AddWithValue("@OwnerId", package.OwnerId ?? (object)DBNull.Value);
+            updateCommand.Parameters.AddWithValue("@Id", package.Id!);
 
+            int rowsAffected = updateCommand.ExecuteNonQuery();
             if (rowsAffected == 0)
             {
-                throw new InvalidOperationException("Update failed: No package found with the given ID.");
+                throw new InvalidOperationException($"Update failed: No package found with ID {package.Id}.");
             }
 
             // Update the cards if necessary
@@ -84,22 +90,21 @@ namespace MTCG.Data.Repositories
                 connection.Open();
             }
 
-            // insert new package and return the generated Id
-            int generatedId = connection.QueryFirstOrDefault<int>($"INSERT INTO {_table} (price, ownerId) VALUES (@Price, @OwnerId) RETURNING Id", package);
+            using var insertCommand = new NpgsqlCommand($"INSERT INTO {_table} (price, ownerId) VALUES (@Price, @OwnerId) RETURNING Id", connection as NpgsqlConnection);
+            insertCommand.Parameters.AddWithValue("@Price", package.Price!);
+            insertCommand.Parameters.AddWithValue("@OwnerId", package.OwnerId ?? (object)DBNull.Value);
 
-            // check if insert is successful
-            if (generatedId > 0)
+            var result = insertCommand.ExecuteScalar();
+            if (result != null && int.TryParse(result.ToString(), out int generatedId) && generatedId > 0)
             {
-                // save generated Id to the object
                 package.Id = generatedId;
-
-                // attach cards to this package
                 AttachCards(package);
             }
-            else {
-                // Throw an exception if the package couldn't be inserted
+            else
+            {
                 throw new InvalidOperationException("Failed to insert the new package.");
             }
+
         }
 
         /// <summary>
@@ -144,12 +149,16 @@ namespace MTCG.Data.Repositories
                 foreach(Card card in cards)
                 {
                     // check if there is a card with this Id on the database
-                    int count = connection.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM cards WHERE id = @Id", new { card.Id });
+                    using var countCommand = new NpgsqlCommand("SELECT COUNT(*) FROM cards WHERE id = @Id", connection as NpgsqlConnection);
+                    countCommand.Parameters.AddWithValue("@Id", card.Id!);
+
+                    var countResult = countCommand.ExecuteScalar();
+                    int count = countResult != null ? Convert.ToInt32(countResult) : 0;
                     if (count > 0) return true;
                 }
                 return false;
             }
-            else return false;
+            return false;
         }
 
         /// <summary>
@@ -158,19 +167,25 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public Package? GetNextAvailablePackage()
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
 
-            // Select a package with no owner yet
             var query = "SELECT * FROM packages WHERE OwnerId IS NULL LIMIT 1;";
-            Package? package = connection.QueryFirstOrDefault<Package>(query);
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+
+            Package? package = null;
+            using var reader = command.ExecuteReader();
+            if (reader.Read())
+            {
+                package = DataMapperService.MapToObject<Package>(reader);
+            }
 
             return package;
         }
+
 
         /// <summary>
         /// Assigns a package to the user, updating the package and cards records, or throws an exception
@@ -179,7 +194,6 @@ namespace MTCG.Data.Repositories
         /// <param name="user"></param>
         public void AssignPackageToUser(Package package, User user)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
@@ -190,15 +204,23 @@ namespace MTCG.Data.Repositories
             {
                 // Update the OwnerId of the package
                 var packageUpdateQuery = "UPDATE packages SET OwnerId = @OwnerId WHERE Id = @PackageId";
-                connection.Execute(packageUpdateQuery, new { OwnerId = user.Id, PackageId = package.Id });
+                using var packageUpdateCommand = new NpgsqlCommand(packageUpdateQuery, connection as NpgsqlConnection);
+                packageUpdateCommand.Parameters.AddWithValue("@OwnerId", user.Id!);
+                packageUpdateCommand.Parameters.AddWithValue("@PackageId", package.Id!);
+                packageUpdateCommand.ExecuteNonQuery();
+
                 // Update the owner of all cards in the package
                 var cardUpdateQuery = "UPDATE cards SET ownerId = @OwnerId WHERE PackageId = @PackageId";
-                connection.Execute(cardUpdateQuery, new { OwnerId = user.Id, PackageId = package.Id });
+                using var cardUpdateCommand = new NpgsqlCommand(cardUpdateQuery, connection as NpgsqlConnection);
+                cardUpdateCommand.Parameters.AddWithValue("@OwnerId", user.Id!);
+                cardUpdateCommand.Parameters.AddWithValue("@PackageId", package.Id!);
+                cardUpdateCommand.ExecuteNonQuery();
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException("There was an error assigning the package to the user: " + ex.Message);
             }
         }
+
     }
 }
