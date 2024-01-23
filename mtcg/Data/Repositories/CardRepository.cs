@@ -1,5 +1,6 @@
 using System.Data;
 using MTCG.Data.Models;
+using MTCG.Data.Services;
 using Npgsql;
 
 namespace MTCG.Data.Repositories
@@ -134,17 +135,7 @@ namespace MTCG.Data.Repositories
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-
-                var card = new Card
-                {
-                    Id = reader.GetString(reader.GetOrdinal("id")),
-                    Name = reader.GetString(reader.GetOrdinal("name")),
-                    Damage = reader.GetDouble(reader.GetOrdinal("damage")),
-                    ElementType = reader.GetString(reader.GetOrdinal("elementType")),
-                    CardType = reader.GetString(reader.GetOrdinal("cardType")),
-                    PackageId = reader.GetInt32(reader.GetOrdinal("packageId")),
-                    OwnerId = reader.GetInt32(reader.GetOrdinal("ownerId")),
-                };
+                var card = DataMapperService.MapToObject<Card>(reader);
                 cards.Add(card);
             }
 

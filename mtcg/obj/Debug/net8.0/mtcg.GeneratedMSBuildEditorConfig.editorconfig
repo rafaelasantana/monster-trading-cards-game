@@ -8,6 +8,6 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = mtcg
-build_property.ProjectDir = /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/
+build_property.ProjectDir = /Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG/
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
