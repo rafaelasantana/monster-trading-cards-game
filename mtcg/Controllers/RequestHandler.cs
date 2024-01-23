@@ -33,7 +33,7 @@ namespace MTCG.Controllers
             _deckRepository = new DeckRepository(dbConnectionManager);
             _userStatsRepository = new UserStatsRepository(dbConnectionManager);
             _tradingRepository = new TradingRepository(dbConnectionManager);
-            _userRepository = new UserRepository(dbConnectionManager, _userStatsRepository, _userProfileRepository);
+            _userRepository = new UserRepository(dbConnectionManager);
             _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
             _battleRepository = new BattleRepository(dbConnectionManager);
             _battleService = new BattleService(_deckRepository, _battleRepository, _userStatsRepository);
