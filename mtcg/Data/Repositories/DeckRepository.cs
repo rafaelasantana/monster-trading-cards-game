@@ -2,6 +2,7 @@ using System;
 using Dapper;
 using MTCG.Data.Models;
 using System.Data;
+using Npgsql;
 
 
 namespace MTCG.Data.Repositories
@@ -19,7 +20,6 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public List<Card> GetDeckByUserId(int? userId)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
@@ -31,15 +31,37 @@ namespace MTCG.Data.Repositories
                 FROM deckCards
                 INNER JOIN cards ON deckCards.cardId = cards.id
                 WHERE deckCards.ownerId = @UserId;";
-            var cards = connection.Query<Card>(query, new { UserId = userId }).ToList();
 
-            if (cards == null)
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+
+            if (userId.HasValue)
+            {
+                command.Parameters.AddWithValue("@UserId", userId.Value);
+            }
+            else
+            {
+                command.Parameters.AddWithValue("@UserId", DBNull.Value);
+            }
+
+            var cards = new List<Card>();
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var card = new Card
+                {
+                    // Map properties from reader to Card
+                };
+                cards.Add(card);
+            }
+
+            if (cards.Count == 0)
             {
                 throw new InvalidOperationException("No cards found for the user.");
             }
 
             return cards;
         }
+
 
         public bool ConfigureDeck(int? userId, string[] cardIds)
         {

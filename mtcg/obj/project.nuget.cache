@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "fVD3OzcVB8pyO3KJ6FFRCAw4hoLSFaTu7Z76OezRlSjFI8VGhjqV8Nn3xljPWnZnp++q99HUpV5h1YhHazVL4Q==",
+  "dgSpecHash": "2C1OAn0EJmmVIMGOltArbBUg+WpZMj+XhclOFM65RCXAXOldnGRho0gJq0oYceAIeRlExcTXbRaeqPeAxXRVeA==",
   "success": true,
-  "projectFilePath": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/mtcg.csproj",
+  "projectFilePath": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG/mtcg.csproj",
   "expectedPackageFiles": [
     "/Users/rafaelasantana/.nuget/packages/bcrypt.net-next/4.0.3/bcrypt.net-next.4.0.3.nupkg.sha512",
     "/Users/rafaelasantana/.nuget/packages/dapper/2.1.24/dapper.2.1.24.nupkg.sha512",

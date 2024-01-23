@@ -1,6 +1,6 @@
 using System.Data;
-using Dapper;
 using MTCG.Data.Models;
+using Npgsql;
 
 namespace MTCG.Data.Repositories
 {
@@ -24,16 +24,37 @@ namespace MTCG.Data.Repositories
             }
 
             // check if card exists on the database
-            int count = connection.QueryFirstOrDefault<int>($"SELECT COUNT(*) FROM {_table} WHERE id = @Id", new { card.Id });
+            string countQuery = $"SELECT COUNT(*) FROM {_table} WHERE id = @Id";
+            using var countCommand = new NpgsqlCommand(countQuery, connection as NpgsqlConnection);
+            countCommand.Parameters.AddWithValue("@Id", card.Id!);
+            int count = Convert.ToInt32(countCommand.ExecuteScalar());
+
             if (count == 0)
             {
-                // save new card
-                var query = $"INSERT INTO {_table} ({_fields}) VALUES (@Id, @Name, @Damage, @ElementType::ElementType, @CardType::CardType, @PackageId, @OwnerId)";
-                connection.Execute(query, card);
+                // Save new card
+                string insertQuery = $"INSERT INTO {_table} ({_fields}) VALUES (@Id, @Name, @Damage, @ElementType::ElementType, @CardType::CardType, @PackageId, @OwnerId)";
+                using var insertCommand = new NpgsqlCommand(insertQuery, connection as NpgsqlConnection);
+                // Adding parameters to the command object
+                insertCommand.Parameters.AddWithValue("@Id", card.Id!);
+                insertCommand.Parameters.AddWithValue("@Name", card.Name!);
+                insertCommand.Parameters.AddWithValue("@Damage", card.Damage!);
+                insertCommand.Parameters.AddWithValue("@ElementType", card.ElementType!);
+                insertCommand.Parameters.AddWithValue("@CardType", card.CardType!);
+                insertCommand.Parameters.AddWithValue("@PackageId", card.PackageId!);
+                if (card.OwnerId.HasValue)
+                {
+                    insertCommand.Parameters.AddWithValue("@OwnerId", card.OwnerId.Value);
+                }
+                else
+                {
+                    insertCommand.Parameters.AddWithValue("@OwnerId", DBNull.Value);
+                }
+
+                insertCommand.ExecuteNonQuery();
             }
             else
             {
-                // update card
+                // Update card
                 Update(card);
             }
         }
@@ -52,12 +73,35 @@ namespace MTCG.Data.Repositories
                 connection.Open();
             }
 
-            var query = $"UPDATE {_table} SET name=@Name, damage=@Damage, elementType=@ElementType::ElementType, cardType=@CardType::CardType, packageId=@PackageId, ownerId=@OwnerId WHERE id=@Id";
-            int rowsAffected = connection.Execute(query, card);
+            var query = $"UPDATE {_table} SET name=@Name, damage=@Damage, elementType=@ElementType, cardType=@CardType, packageId=@PackageId, ownerId=@OwnerId WHERE id=@Id";
+
+            using var updateCommand = new NpgsqlCommand(query, connection as NpgsqlConnection);
+
+            // Adding parameters to the command object
+            updateCommand.Parameters.AddWithValue("@Name", card.Name!);
+            updateCommand.Parameters.AddWithValue("@Damage", card.Damage!);
+            updateCommand.Parameters.AddWithValue("@ElementType", card.ElementType!);
+            updateCommand.Parameters.AddWithValue("@CardType", card.CardType!);   ;
+            updateCommand.Parameters.AddWithValue("@PackageId", card.PackageId!);
+
+            // Handling the nullable ownerId
+            if (card.OwnerId.HasValue)
+            {
+                updateCommand.Parameters.AddWithValue("@OwnerId", card.OwnerId.Value);
+            }
+            else
+            {
+                updateCommand.Parameters.AddWithValue("@OwnerId", DBNull.Value);
+            }
+
+            updateCommand.Parameters.AddWithValue("@Id", card.Id!);
+
+            int rowsAffected = updateCommand.ExecuteNonQuery();
 
             if (rowsAffected == 0)
                 throw new InvalidOperationException("Update failed: No card found with the given ID.");
         }
+
 
         /// <summary>
         /// Lists all cards belonging to this user
@@ -74,7 +118,38 @@ namespace MTCG.Data.Repositories
             }
 
             var query = "SELECT * FROM cards WHERE ownerId = @UserId";
-            return connection.Query<Card>(query, new { UserId = userId }).ToList();
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+
+            // Handling the nullable userId
+            if (userId.HasValue)
+            {
+                command.Parameters.AddWithValue("@UserId", userId.Value);
+            }
+            else
+            {
+                command.Parameters.AddWithValue("@UserId", DBNull.Value);
+            }
+
+            List<Card> cards = [];
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+
+                var card = new Card
+                {
+                    Id = reader.GetString(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                    Damage = reader.GetDouble(reader.GetOrdinal("damage")),
+                    ElementType = reader.GetString(reader.GetOrdinal("elementType")),
+                    CardType = reader.GetString(reader.GetOrdinal("cardType")),
+                    PackageId = reader.GetInt32(reader.GetOrdinal("packageId")),
+                    OwnerId = reader.GetInt32(reader.GetOrdinal("ownerId")),
+                };
+                cards.Add(card);
+            }
+
+            return cards;
         }
+
     }
 }

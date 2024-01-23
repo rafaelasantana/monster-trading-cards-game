@@ -21,6 +21,16 @@ namespace MTCG.Data.Models
             ElementType = elementType;
             CardType = cardType;
         }
+        public Card(string? id, string? name, double? damage, string? elementType, string? cardType, int? packageId, int? ownerId)
+        {
+            Id = id;
+            Name = name;
+            Damage = damage;
+            ElementType = elementType;
+            CardType = cardType;
+            PackageId = packageId;
+            OwnerId = ownerId;
+        }
 
         public void AttachToPackage(Package package)
         {
