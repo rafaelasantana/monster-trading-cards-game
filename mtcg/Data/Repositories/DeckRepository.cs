@@ -1,6 +1,5 @@
-using System;
-using Dapper;
 using MTCG.Data.Models;
+using MTCG.Data.Services;
 using System.Data;
 using Npgsql;
 
@@ -47,10 +46,7 @@ namespace MTCG.Data.Repositories
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                var card = new Card
-                {
-                    // Map properties from reader to Card
-                };
+                var card = DataMapperService.MapToObject<Card>(reader);
                 cards.Add(card);
             }
 
@@ -62,66 +58,74 @@ namespace MTCG.Data.Repositories
             return cards;
         }
 
-
         public bool ConfigureDeck(int? userId, string[] cardIds)
         {
-            // Check if the number of cards is exactly four
             if (cardIds.Length != 4)
             {
                 throw new ArgumentException("The deck must contain exactly 4 cards.");
             }
 
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
 
-            // Begin transaction
             using var transaction = connection.BeginTransaction();
 
             try
             {
                 // Clear existing deck
-                connection.Execute($"DELETE FROM { _table } WHERE ownerId = @OwnerId", new { OwnerId = userId }, transaction);
+                var deleteQuery = $"DELETE FROM {_table} WHERE ownerId = @OwnerId";
+                using var deleteCommand = new NpgsqlCommand(deleteQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                deleteCommand.Parameters.AddWithValue("@OwnerId", userId.HasValue ? userId.Value : DBNull.Value);
+                deleteCommand.ExecuteNonQuery();
 
-                // Add new cards to the deck
                 foreach (var cardId in cardIds)
                 {
                     // Check if card is in the store (trading)
-                    var isTrading = connection.QueryFirstOrDefault<bool>(
-                        "SELECT COUNT(1) > 0 FROM tradings WHERE cardId = @CardId AND status = 'open'",
-                        new { CardId = cardId }, transaction);
+                    var isTradingQuery = "SELECT COUNT(1) FROM tradings WHERE cardId = @CardId AND status = 'open'";
+                    using var isTradingCommand = new NpgsqlCommand(isTradingQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                    isTradingCommand.Parameters.AddWithValue("@CardId", cardId);
+                    var isTradingResult = isTradingCommand.ExecuteScalar();
+                    bool isTrading = isTradingResult != null && Convert.ToInt64(isTradingResult) > 0;
+
                     if (isTrading)
                     {
                         transaction.Rollback();
                         throw new InvalidOperationException("Card is open for trading and cannot be added to the deck.");
                     }
 
-                    // check if card belongs to the user
-                    int count = connection.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM cards WHERE id = @CardId AND ownerId = @OwnerId",
-                                                    new { CardId = cardId, OwnerId = userId }, transaction);
+                    // Check if card belongs to the user
+                    var countQuery = "SELECT COUNT(*) FROM cards WHERE id = @CardId AND ownerId = @OwnerId";
+                    using var countCommand = new NpgsqlCommand(countQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                    countCommand.Parameters.AddWithValue("@CardId", cardId);
+                    countCommand.Parameters.AddWithValue("@OwnerId", userId.HasValue ? userId.Value : DBNull.Value);
+                    var countResult = countCommand.ExecuteScalar();
+                    int count = countResult != null ? Convert.ToInt32(countResult) : 0;
                     if (count == 0)
                     {
                         transaction.Rollback();
                         throw new InvalidOperationException("Card does not belong to the user.");
                     }
-                    // Insert card to the deck
-                    connection.Execute($"INSERT INTO { _table } (cardId, ownerId) VALUES (@CardId, @OwnerId)",
-                                    new { CardId = cardId, OwnerId = userId }, transaction);
+
+                    // Insert card into the deck
+                    var insertQuery = $"INSERT INTO {_table} (cardId, ownerId) VALUES (@CardId, @OwnerId)";
+                    using var insertCommand = new NpgsqlCommand(insertQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
+                    insertCommand.Parameters.AddWithValue("@CardId", cardId);
+                    insertCommand.Parameters.AddWithValue("@OwnerId", userId.HasValue ? userId.Value : DBNull.Value);
+                    insertCommand.ExecuteNonQuery();
                 }
 
-                // Commit transaction
                 transaction.Commit();
                 return true;
             }
             catch (Exception ex)
             {
-                // Rollback transaction on error
                 transaction.Rollback();
                 throw new InvalidOperationException(ex.Message);
             }
         }
+
     }
 }
