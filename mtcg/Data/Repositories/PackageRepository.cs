@@ -1,5 +1,4 @@
 using System.Data;
-using Dapper;
 using MTCG.Data.Models;
 using MTCG.Data.Services;
 using Npgsql;

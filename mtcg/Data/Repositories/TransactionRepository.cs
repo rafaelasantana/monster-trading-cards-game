@@ -1,6 +1,6 @@
 using System.Data;
-using Dapper;
 using MTCG.Data.Models;
+using Npgsql;
 
 namespace MTCG.Data.Repositories
 {
@@ -17,16 +17,20 @@ namespace MTCG.Data.Repositories
         /// <param name="transaction"></param>
         public void Save(Transaction transaction)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
-            // Save the transaction to the database
+
             var query = $"INSERT INTO {_table} (userId, packageId, price) VALUES (@UserId, @PackageId, @Price)";
-            connection.Execute(query, transaction);
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+            command.Parameters.AddWithValue("@UserId", transaction.UserId);
+            command.Parameters.AddWithValue("@PackageId", transaction.PackageId);
+            command.Parameters.AddWithValue("@Price", transaction.Price);
+            command.ExecuteNonQuery();
         }
+
 
         /// <summary>
         /// Executes the purchase of a package by the user, or returns false with an error message
@@ -36,7 +40,6 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public bool PurchasePackage(User user, out string errorMessage)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
@@ -53,21 +56,17 @@ namespace MTCG.Data.Repositories
                     return false;
                 }
 
-                // Check if user has enough coins
                 if (user.Coins < package.Price)
                 {
                     errorMessage = "Insufficient coins to purchase package.";
                     return false;
                 }
 
-                // Deduct coins and update user's coins
                 user.Coins -= package.Price;
                 _userRepository.Update(user);
 
-                // Assign cards from the package to the user
                 _packageRepository.AssignPackageToUser(package, user);
 
-                // Create and save transaction
                 Transaction transactionRecord = new(user.Id, package.Id, package.Price);
                 Save(transactionRecord);
 
@@ -80,7 +79,5 @@ namespace MTCG.Data.Repositories
                 return false;
             }
         }
-
-
     }
 }
