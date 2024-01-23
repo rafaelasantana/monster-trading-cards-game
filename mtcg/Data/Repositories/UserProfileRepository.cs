@@ -1,6 +1,7 @@
 using System.Data;
-using Dapper;
 using MTCG.Data.Models;
+using MTCG.Data.Services;
+using Npgsql;
 
 namespace MTCG.Data.Repositories
 {
@@ -10,20 +11,37 @@ namespace MTCG.Data.Repositories
         private readonly string _table = "userProfiles";
         private readonly string _fields = "userId, name, bio, image";
 
+        /// <summary>
+        /// Retrieves the user profile associated with this user id
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
         public UserProfile? GetUserProfile(int? userId)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
 
-            return connection.QueryFirstOrDefault<UserProfile>(
-                $"SELECT * FROM { _table } WHERE userId = @UserId;",
-                new { UserId = userId });
+            var query = $"SELECT * FROM {_table} WHERE userId = @UserId;";
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+            command.Parameters.AddWithValue("@UserId", userId ?? (object)DBNull.Value);
+
+            UserProfile? userProfile = null;
+            using var reader = command.ExecuteReader();
+            if (reader.Read())
+            {
+                userProfile = DataMapperService.MapToObject<UserProfile>(reader);
+            }
+
+            return userProfile;
         }
 
+        /// <summary>
+        /// Creates a new user profile record on the database
+        /// </summary>
+        /// <param name="userProfile"></param>
         public void CreateUserProfile(UserProfile userProfile)
         {
             var connection = _dbConnectionManager.GetConnection();
@@ -32,19 +50,24 @@ namespace MTCG.Data.Repositories
                 connection.Open();
             }
 
-            var query = $"INSERT INTO { _table } ({ _fields }) VALUES (@UserId, @Name, @Bio, @Image);";
-            connection.Execute(query, userProfile);
+            var query = $"INSERT INTO {_table} ({_fields}) VALUES (@UserId, @Name, @Bio, @Image);";
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+            command.Parameters.AddWithValue("@UserId", userProfile.UserId);
+            command.Parameters.AddWithValue("@Name", userProfile.Name ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@Bio", userProfile.Bio ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@Image", userProfile.Image ?? (object)DBNull.Value);
+
+            command.ExecuteNonQuery();
         }
+
 
         public void UpdateUserProfile(int? userId, UserProfile updatedProfile)
         {
-            // open connection
             var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
             }
-
             // Check if the profile already exists
             var existingProfile = GetUserProfile(userId);
             if (existingProfile == null)
@@ -56,9 +79,16 @@ namespace MTCG.Data.Repositories
             {
                 // Update existing profile
                 var query = $"UPDATE {_table} SET name = @Name, bio = @Bio, image = @Image WHERE userId = @UserId;";
-                connection.Execute(query, new { updatedProfile.Name, updatedProfile.Bio, updatedProfile.Image, UserId = userId });
+                using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+                command.Parameters.AddWithValue("@Name", updatedProfile.Name ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@Bio", updatedProfile.Bio ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@Image", updatedProfile.Image ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@UserId", userId);
+
+                command.ExecuteNonQuery();
             }
         }
+
 
     }
 }
