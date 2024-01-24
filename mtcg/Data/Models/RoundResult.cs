@@ -18,5 +18,20 @@ namespace MTCG.Data.Models
             WinningCardId = winningCardId;
             Details = details;
         }
+
+        public void PrintRoundResult()
+        {
+            // public int? RoundNumber { get; set; }
+            // public string? Player1CardId { get; set; }
+            // public string? Player2CardId { get; set; }
+            // public string? WinningCardId { get; set; }
+            // public string? Details { get; set; }
+
+            Console.WriteLine($"RoundNumber: {RoundNumber}");
+            Console.WriteLine($"Player1CardId: {Player1CardId}");
+            Console.WriteLine($"Player2CardId: {Player2CardId}");
+            Console.WriteLine($"WinningCardId: {WinningCardId}");
+            Console.WriteLine($"Details: {Details}");
+        }
     }
 }

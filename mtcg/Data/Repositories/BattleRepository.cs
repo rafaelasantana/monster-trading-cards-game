@@ -92,7 +92,6 @@ namespace MTCG.Data.Repositories
             }
         }
 
-
         public Battle GetBattleById(int? battleId)
         {
             if (_connection.State != ConnectionState.Open)
@@ -116,7 +115,6 @@ namespace MTCG.Data.Repositories
             return battle;
         }
 
-
         public void UpdateBattleStatus(int? battleId, string newStatus)
         {
             if (_connection.State != ConnectionState.Open)
@@ -127,8 +125,8 @@ namespace MTCG.Data.Repositories
             string updateQuery = $"UPDATE {_battlesTable} SET status = @NewStatus WHERE id = @BattleId";
 
             using var command = new NpgsqlCommand(updateQuery, _connection as NpgsqlConnection);
-            command.Parameters.AddWithValue("@NewStatus", newStatus ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@BattleId", battleId ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@NewStatus", newStatus);
+            command.Parameters.AddWithValue("@BattleId", battleId);
 
             command.ExecuteNonQuery();
         }

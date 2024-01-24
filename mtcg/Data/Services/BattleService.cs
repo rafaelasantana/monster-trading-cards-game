@@ -1,5 +1,7 @@
 using MTCG.Data.Repositories;
 using MTCG.Data.Models;
+using System.Diagnostics;
+using System.Data;
 
 namespace MTCG.Data.Services
 {
@@ -21,6 +23,7 @@ namespace MTCG.Data.Services
 
         public BattleResult RequestBattle(int? playerId)
         {
+            Debug.WriteLine("In request battle...");
             if (!playerId.HasValue)
             {
                 throw new ArgumentNullException(nameof(playerId), "Player ID cannot be null.");
@@ -35,12 +38,14 @@ namespace MTCG.Data.Services
             var pendingBattle = _battleRepository.GetPendingBattle();
             if (pendingBattle != null && pendingBattle.Player1Id != playerId)
             {
+                Console.WriteLine("Will add player2 to pending battle");
                 // Join the pending battle
                 _battleRepository.SetPlayerForBattle(pendingBattle.Id, playerId);
                 return ConductBattle(pendingBattle.Id);
             }
             else
             {
+                Console.WriteLine("Will create new pending battle for player1");
                 // No pending battle, create a new one
                 var newBattleId = _battleRepository.CreatePendingBattle(playerId);
                 // Return a result indicating a pending status since no opponent yet
@@ -50,58 +55,129 @@ namespace MTCG.Data.Services
 
         private BattleResult ConductBattle(int? battleId)
         {
+            Console.WriteLine("In conduct battle");
             Battle battle = _battleRepository.GetBattleById(battleId);
+            Console.WriteLine("Got battle in ConductBattle");
+            // Ensure that both player IDs are not null
+            if (!battle.Player1Id.HasValue || !battle.Player2Id.HasValue)
+            {
+                throw new InvalidOperationException("Battle must have two players.");
+            }
             // Update battle status to ongoing
-            _battleRepository.UpdateBattleStatus(battleId, "Ongoing");
-            Console.WriteLine("Battle in ongoing...");
-
-            // Retrieve decks for both players
-            List<Card> deckPlayer1 = _deckRepository.GetDeckByUserId(battle.Player1Id);
-            List<Card> deckPlayer2 = _deckRepository.GetDeckByUserId(battle.Player2Id);
-            Console.WriteLine("Got decks from both users");
+            _battleRepository.UpdateBattleStatus(battleId, "ongoing");
+            Console.WriteLine("updated battle status, Battle in ongoing...");
 
             BattleResult battleResult = new BattleResult
             {
                 BattleId = battleId.Value,
-                Status = BattleStatus.Ongoing
+                Status = BattleStatus.Ongoing,
+                Summary = "\n________ BATTLE SUMMARY ________\n"
             };
 
             bool battleIsOngoing = true;
-            int roundCounter = 0;
-            while (battleIsOngoing)
+            int roundCounter = 1;
+            while (roundCounter <= 100 && battleIsOngoing)
             {
-                Console.WriteLine("Will conduct round:");
-                RoundResult roundResult = ConductRound(deckPlayer1, deckPlayer2);
+                // Retrieve decks for both players
+                List<Card> deckPlayer1 = _deckRepository.GetDeckByUserId(battle.Player1Id);
+                List<Card> deckPlayer2 = _deckRepository.GetDeckByUserId(battle.Player2Id);
+
+                // Add number of cards in each deck to the battle summary
+                battleResult.Summary += $"\n---- ROUND {roundCounter} ----\n";
+                battleResult.Summary += $"\nNumber of cards in Player 1's deck: {deckPlayer1.Count}\n";
+                battleResult.Summary += $"\nNumber of cards in Player 2's deck: {deckPlayer2.Count}\n";
+
+                // Check if either deck is empty
+                if (!deckPlayer1.Any())
+                {
+                    battleResult.Summary += "\n *** BATTLE IS OVER *** \n \nPlayer 1's deck is empty, Player 2 WINS!\n";
+                    battleIsOngoing = false;
+                    battleResult.WinnerId = battle.Player2Id;
+                    battleResult.LoserId = battle.Player1Id;
+                    // Update battle status
+                    _battleRepository.UpdateBattleStatus(battleId, "completed");
+                    break;
+                }
+                else if (!deckPlayer2.Any())
+                {
+                    battleResult.Summary += "\n *** BATTLE IS OVER *** \n \nPlayer 2's deck is empty, Player 1 WINS!\n";
+                    battleIsOngoing = false;
+                    battleResult.WinnerId = battle.Player1Id;
+                    battleResult.LoserId = battle.Player2Id;
+                    // Update battle status
+                    _battleRepository.UpdateBattleStatus(battleId, "completed");
+                    break;
+                }
+
+                // Conduct round
+                RoundResult roundResult = ConductRound(deckPlayer1, deckPlayer2, battle.Player1Id.Value, battle.Player2Id.Value);
                 roundResult.RoundNumber = ++roundCounter;
+                // Log round
                 battleResult.LogRound(roundResult);
-                battleIsOngoing = false;
+                // Add round details to summary
+                battleResult.Summary += roundResult.Details;
             }
+            // Update battle status if it reached 100 rounds
+            if (battleIsOngoing)
+            {
+                _battleRepository.UpdateBattleStatus(battleId, "completed");
+                battleResult.Summary += "\n *** BATTLE IS OVER *** \n\n Maximum rounds achieved: it's a TIE!\n";
+            }
+            // TODO update battle record with endtime, winnerid
+            // TODO update scoreboard, elo
+            Console.WriteLine("Battle is finished, results:");
+            battleResult.PrintBattleResult();
             return battleResult;
         }
 
-        private RoundResult ConductRound(List<Card> deckPlayer1, List<Card> deckPlayer2)
-        {
-            // Select a random card from each player's deck
-            var cardPlayer1 = deckPlayer1[new Random().Next(deckPlayer1.Count)];
-            var cardPlayer2 = deckPlayer2[new Random().Next(deckPlayer2.Count)];
-            Console.WriteLine("Got random card from both players");
 
-            // Apply game logic to determine the winner of the round
-            // For example, compare card damage and apply elemental effectiveness
-            Card winner = DecideWinner(cardPlayer1, cardPlayer2);
-            Console.WriteLine("decided winner");
+        private RoundResult ConductRound(List<Card> deckPlayer1, List<Card> deckPlayer2, int player1Id, int player2Id)
+        {
+            var random = new Random();
+            // Select a random card from each player's deck
+            Card cardPlayer1 = deckPlayer1[random.Next(deckPlayer1.Count)];
+            Card cardPlayer2 = deckPlayer2[random.Next(deckPlayer2.Count)];
 
             // Create a new round result object
             var roundResult = new RoundResult
             {
                 Player1CardId = cardPlayer1.Id,
                 Player2CardId = cardPlayer2.Id,
-                WinningCardId = winner.Id
+                Details = ""
             };
 
-            // Remove the defeated card from loser's deck
-            // And apply other round effects as needed
+            roundResult.Details += $"\nPlayer 1 plays with {cardPlayer1.Name}, Player 2 plays with {cardPlayer2.Name}\n";
 
+            // Apply game logic to determine the winner of the round
+            Card winnerCard = DecideWinner(cardPlayer1, cardPlayer2);
+
+            if (winnerCard == null)
+            {
+                // It's a tie, no cards are moved
+                roundResult.WinningCardId = "None";
+                roundResult.Details += "It's a tie!\n";
+            }
+            else
+            {
+                roundResult.WinningCardId = winnerCard.Id;
+                // Determine the loser card
+                Card loserCard = winnerCard == cardPlayer1 ? cardPlayer2 : cardPlayer1;
+                int loserId = winnerCard == cardPlayer1 ? player2Id : player1Id;
+
+                // Transfer loser's card to winner's deck
+                if (loserCard == cardPlayer1)
+                {
+                    roundResult.Details += $"\nWinner: {cardPlayer2.Name}\n";
+                    roundResult.Details += "\nPlayer 1 loses the card to Player 2\n";
+                    _deckRepository.TransferCardToUsersDeck(cardPlayer1.Id, player2Id);
+                }
+                else
+                {
+                    roundResult.Details += $"\nWinner: {cardPlayer1.Name}\n";
+                    roundResult.Details += "\nPlayer 2 loses the card to Player 1\n";
+                    _deckRepository.TransferCardToUsersDeck(cardPlayer2.Id, player1Id);
+                }
+            }
             return roundResult;
         }
 

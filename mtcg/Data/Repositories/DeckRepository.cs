@@ -1,6 +1,7 @@
 using MTCG.Data.Models;
 using MTCG.Data.Services;
 using System.Data;
+using System.Diagnostics;
 using Npgsql;
 
 
@@ -128,6 +129,22 @@ namespace MTCG.Data.Repositories
                 transaction.Rollback();
                 throw new InvalidOperationException("An error occurred while configuring the deck.");
             }
+        }
+
+        public void TransferCardToUsersDeck(string cardId, int userId)
+        {
+            Console.WriteLine("in TransferCardToUsersDeck");
+            var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+            var query = $"UPDATE {_table} SET ownerid = @OwnerId WHERE cardid = @CardId;";
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+            command.Parameters.AddWithValue("@OwnerId", userId);
+            command.Parameters.AddWithValue("@CardId", cardId);
+            command.ExecuteNonQuery();
+            Console.WriteLine("executed update in TransferCardToUsersDeck");
         }
 
     }
