@@ -80,7 +80,6 @@ namespace MTCG.Data.Repositories
                 using var deleteCommand = new NpgsqlCommand(deleteQuery, connection as NpgsqlConnection, transaction as NpgsqlTransaction);
                 deleteCommand.Parameters.AddWithValue("@OwnerId", userId.HasValue ? userId.Value : DBNull.Value);
                 deleteCommand.ExecuteNonQuery();
-
                 foreach (var cardId in cardIds)
                 {
                     // Check if card is in the store (trading)
@@ -120,10 +119,14 @@ namespace MTCG.Data.Repositories
                 transaction.Commit();
                 return true;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException)
+            {
+                throw; // Re-throw the original exception
+            }
+            catch (Exception)
             {
                 transaction.Rollback();
-                throw new InvalidOperationException(ex.Message);
+                throw new InvalidOperationException("An error occurred while configuring the deck.");
             }
         }
 

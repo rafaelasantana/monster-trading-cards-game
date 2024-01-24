@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/mtcg.csproj": {}
+    "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG/mtcg.csproj": {}
   },
   "projects": {
-    "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/mtcg.csproj": {
+    "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG/mtcg.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/mtcg.csproj",
+        "projectUniqueName": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG/mtcg.csproj",
         "projectName": "mtcg",
-        "projectPath": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/mtcg.csproj",
+        "projectPath": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG/mtcg.csproj",
         "packagesPath": "/Users/rafaelasantana/.nuget/packages/",
-        "outputPath": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/mtcg/obj/",
+        "outputPath": "/Users/rafaelasantana/Documents/FHTW/FHTW_2023WS/SWEN/MTCG/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/rafaelasantana/.nuget/NuGet/NuGet.Config"
