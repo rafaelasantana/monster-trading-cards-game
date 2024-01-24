@@ -18,11 +18,8 @@ namespace MTCG
             // Retrieve the connection string
             var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-            // Create database connection
-            var dbConnection = new NpgsqlConnection(connectionString);
-
             // Create database manager
-            var dbConnectionManager = new DbConnectionManager(dbConnection);
+            var dbConnectionManager = new DbConnectionManager(connectionString);
 
             // Retrieve server URL from configuration
             var serverUrl = configuration["ServerUrl"] ?? "http://localhost:10001/";

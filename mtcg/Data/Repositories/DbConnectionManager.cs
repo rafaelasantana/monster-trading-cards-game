@@ -3,14 +3,18 @@ using System.Data;
 
 namespace MTCG.Data.Repositories
 {
-    public class DbConnectionManager(IDbConnection dbConnection) : IDbConnectionManager
+    public class DbConnectionManager : IDbConnectionManager
     {
-        private readonly string _connectionString = dbConnection.ConnectionString;
-        private readonly IDbConnection? dbConnection = dbConnection;
+        private readonly string _connectionString;
 
-        public IDbConnection GetConnection()
+        public DbConnectionManager(string connectionString)
         {
-            return dbConnection ?? new NpgsqlConnection(_connectionString);
+            _connectionString = connectionString;
+        }
+
+        public NpgsqlConnection GetConnection()
+        {
+            return new NpgsqlConnection(_connectionString);
         }
 
         public bool TestConnection()
@@ -18,7 +22,8 @@ namespace MTCG.Data.Repositories
             using var connection = GetConnection();
             try
             {
-                using var command = new NpgsqlCommand("SELECT 1", connection as NpgsqlConnection);
+                connection.Open();
+                using var command = new NpgsqlCommand("SELECT 1", connection);
                 var result = command.ExecuteScalar();
                 return result != null && result.Equals(1);
             }

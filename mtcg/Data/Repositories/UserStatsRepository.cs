@@ -17,7 +17,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public UserStats? GetStatsByUserId(int? userId)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -33,7 +33,6 @@ namespace MTCG.Data.Repositories
             {
                 userStats = DataMapperService.MapToObject<UserStats>(reader);
             }
-
             return userStats;
         }
 
@@ -44,7 +43,7 @@ namespace MTCG.Data.Repositories
         /// <param name="stats"></param>
         public void UpdateStats(UserStats stats)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -75,7 +74,7 @@ namespace MTCG.Data.Repositories
         /// <param name="userId"></param>
         public void CreateStats(int? userId)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -95,7 +94,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public IEnumerable<Scoreboard>? GetScoreboardData()
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();

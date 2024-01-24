@@ -37,7 +37,7 @@ namespace MTCG.Data.Repositories
         private void SaveNew(User user)
         {
             // open connection
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -73,7 +73,7 @@ namespace MTCG.Data.Repositories
         public User? GetByUsername(string? username)
         {
             // open connection
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -98,7 +98,7 @@ namespace MTCG.Data.Repositories
         /// <param name="user"></param>
         public void Update(User user)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();

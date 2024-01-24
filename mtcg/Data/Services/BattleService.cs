@@ -10,20 +10,29 @@ namespace MTCG.Data.Services
         private readonly DeckRepository _deckRepository;
         private readonly BattleRepository _battleRepository;
         private readonly UserStatsRepository _userStatsRepository;
+        private readonly BattleLogsRepository _battleLogsRepository;
 
         public BattleService(
             DeckRepository deckRepository,
             BattleRepository battleRepository,
-            UserStatsRepository userStatsRepository)
+            UserStatsRepository userStatsRepository,
+            BattleLogsRepository battleLogsRepository)
         {
             _deckRepository = deckRepository;
             _battleRepository = battleRepository;
             _userStatsRepository = userStatsRepository;
+            _battleLogsRepository = battleLogsRepository;
         }
 
+        /// <summary>
+        /// Handles player request to enter a battle
+        /// </summary>
+        /// <param name="playerId"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
         public BattleResult RequestBattle(int? playerId)
         {
-            Debug.WriteLine("In request battle...");
             if (!playerId.HasValue)
             {
                 throw new ArgumentNullException(nameof(playerId), "Player ID cannot be null.");
@@ -33,47 +42,48 @@ namespace MTCG.Data.Services
             var playerDeck = _deckRepository.GetDeckByUserId(playerId);
             if (playerDeck == null || !playerDeck.Any())
                 throw new InvalidOperationException("Player does not have a valid deck.");
-
             // Check for an existing pending battle and attempt to join
             var pendingBattle = _battleRepository.GetPendingBattle();
             if (pendingBattle != null && pendingBattle.Player1Id != playerId)
             {
-                Console.WriteLine("Will add player2 to pending battle");
-                // Join the pending battle
+                // Join the pending battle and conduct battle
                 _battleRepository.SetPlayerForBattle(pendingBattle.Id, playerId);
                 return ConductBattle(pendingBattle.Id);
             }
             else
             {
-                Console.WriteLine("Will create new pending battle for player1");
                 // No pending battle, create a new one
-                var newBattleId = _battleRepository.CreatePendingBattle(playerId);
+                int newBattleId = _battleRepository.CreatePendingBattle(playerId);
                 // Return a result indicating a pending status since no opponent yet
                 return new BattleResult { Status = BattleStatus.Pending, BattleId = newBattleId };
             }
         }
 
+        /// <summary>
+        /// Conducts the battle and returns the result
+        /// </summary>
+        /// <param name="battleId"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         private BattleResult ConductBattle(int? battleId)
         {
-            Console.WriteLine("In conduct battle");
+            // Retrieve battle details
             Battle battle = _battleRepository.GetBattleById(battleId);
-            Console.WriteLine("Got battle in ConductBattle");
             // Ensure that both player IDs are not null
-            if (!battle.Player1Id.HasValue || !battle.Player2Id.HasValue)
+            if (!battle.Player1Id.HasValue || !battle.Player2Id.HasValue || !battleId.HasValue)
             {
-                throw new InvalidOperationException("Battle must have two players.");
+                throw new InvalidOperationException("Battle must have two players, or battle does not exist.");
             }
             // Update battle status to ongoing
             _battleRepository.UpdateBattleStatus(battleId, "ongoing");
-            Console.WriteLine("updated battle status, Battle in ongoing...");
-
+            // Create new battle result object
             BattleResult battleResult = new BattleResult
             {
                 BattleId = battleId.Value,
                 Status = BattleStatus.Ongoing,
                 Summary = "\n________ BATTLE SUMMARY ________\n"
             };
-
+            // Start battle
             bool battleIsOngoing = true;
             int roundCounter = 1;
             while (roundCounter <= 100 && battleIsOngoing)
@@ -81,7 +91,6 @@ namespace MTCG.Data.Services
                 // Retrieve decks for both players
                 List<Card> deckPlayer1 = _deckRepository.GetDeckByUserId(battle.Player1Id);
                 List<Card> deckPlayer2 = _deckRepository.GetDeckByUserId(battle.Player2Id);
-
                 // Add number of cards in each deck to the battle summary
                 battleResult.Summary += $"\n---- ROUND {roundCounter} ----\n";
                 battleResult.Summary += $"\nNumber of cards in Player 1's deck: {deckPlayer1.Count}\n";
@@ -94,8 +103,6 @@ namespace MTCG.Data.Services
                     battleIsOngoing = false;
                     battleResult.WinnerId = battle.Player2Id;
                     battleResult.LoserId = battle.Player1Id;
-                    // Update battle status
-                    _battleRepository.UpdateBattleStatus(battleId, "completed");
                     break;
                 }
                 else if (!deckPlayer2.Any())
@@ -104,33 +111,52 @@ namespace MTCG.Data.Services
                     battleIsOngoing = false;
                     battleResult.WinnerId = battle.Player1Id;
                     battleResult.LoserId = battle.Player2Id;
-                    // Update battle status
-                    _battleRepository.UpdateBattleStatus(battleId, "completed");
                     break;
                 }
 
                 // Conduct round
                 RoundResult roundResult = ConductRound(deckPlayer1, deckPlayer2, battle.Player1Id.Value, battle.Player2Id.Value);
                 roundResult.RoundNumber = ++roundCounter;
-                // Log round
+                // Log round for battle result
                 battleResult.LogRound(roundResult);
+                // Save new battle log record
+                _battleLogsRepository.LogBattleRound(battleId.Value, roundCounter, roundResult.Player1CardId, roundResult.Player2CardId, roundResult.Details);
                 // Add round details to summary
                 battleResult.Summary += roundResult.Details;
             }
-            // Update battle status if it reached 100 rounds
+            // Update battle result if it was a draw (100 rounds)
             if (battleIsOngoing)
             {
-                _battleRepository.UpdateBattleStatus(battleId, "completed");
+                // set winner id as null
+                battleResult.WinnerId = null;
+                // add result to the summary
                 battleResult.Summary += "\n *** BATTLE IS OVER *** \n\n Maximum rounds achieved: it's a TIE!\n";
             }
-            // TODO update battle record with endtime, winnerid
-            // TODO update scoreboard, elo
-            Console.WriteLine("Battle is finished, results:");
-            battleResult.PrintBattleResult();
-            return battleResult;
+
+            if (battleId.HasValue && battle.Player1Id.HasValue && battle.Player2Id.HasValue)
+            {
+                // Update battle record
+                _battleRepository.UpdateBattleOutcome(battleId.Value, battleResult.WinnerId);
+                // Calculate elo ratings and update user stats
+                UpdatePlayerStats(battle.Player1Id.Value, battle.Player2Id.Value, battleResult.WinnerId);
+                // battleResult.PrintBattleResult();
+                return battleResult;
+            }
+            else
+            {
+                // Handle the case where battleId is null
+                throw new InvalidOperationException("Battle ID cannot be null when updating battle outcome.");
+            }
         }
 
-
+        /// <summary>
+        /// Conducts a battle round between player 1 and player 2
+        /// </summary>
+        /// <param name="deckPlayer1"></param>
+        /// <param name="deckPlayer2"></param>
+        /// <param name="player1Id"></param>
+        /// <param name="player2Id"></param>
+        /// <returns>The round result</returns>
         private RoundResult ConductRound(List<Card> deckPlayer1, List<Card> deckPlayer2, int player1Id, int player2Id)
         {
             var random = new Random();
@@ -181,6 +207,12 @@ namespace MTCG.Data.Services
             return roundResult;
         }
 
+        /// <summary>
+        /// Decides the winner card based on game rules
+        /// </summary>
+        /// <param name="card1"></param>
+        /// <param name="card2"></param>
+        /// <returns></returns>
         private Card DecideWinner(Card card1, Card card2)
         {
             // Apply special rules first (e.g., Goblins are afraid of Dragons)
@@ -293,6 +325,12 @@ namespace MTCG.Data.Services
             return winner != null;
         }
 
+        /// <summary>
+        /// Applies elemental effectiveness on the defending card
+        /// </summary>
+        /// <param name="attackingCard"></param>
+        /// <param name="defendingCard"></param>
+        /// <returns>The damage on defending card after elemental effectiveness application </returns>
         private double ApplyElementalEffectiveness(Card attackingCard, Card defendingCard)
         {
             double damage = attackingCard.Damage ?? 0;
@@ -320,6 +358,76 @@ namespace MTCG.Data.Services
             }
 
             return damage;
+        }
+
+        /// <summary>
+        /// Updates the Elo rating for both players
+        /// </summary>
+        /// <param name="player1Id"></param>
+        /// <param name="player2Id"></param>
+        /// <param name="winnerId"></param>
+        public void UpdatePlayerStats(int player1Id, int player2Id, int? winnerId)
+        {
+            int K = 30; // K-factor
+
+            // Retrieve current Elo ratings
+            UserStats player1Stats = _userStatsRepository.GetStatsByUserId(player1Id);
+            UserStats player2Stats = _userStatsRepository.GetStatsByUserId(player2Id);
+
+            // Check if both players have Elo values and if not, set it to starting value of 100
+            if (!player1Stats.EloRating.HasValue) player1Stats.EloRating = 100;
+            if (!player2Stats.EloRating.HasValue) player2Stats.EloRating = 100;
+
+            // Calculate expected scores
+            double player1Expected = 1 / (1 + Math.Pow(10, (player2Stats.EloRating.Value - player1Stats.EloRating.Value) / 400.0));
+            double player2Expected = 1 / (1 + Math.Pow(10, (player1Stats.EloRating.Value - player2Stats.EloRating.Value) / 400.0));
+
+            // Determine actual scores based on the winner
+            double player1ActualScore, player2ActualScore;
+            if (winnerId.HasValue)
+            {
+                // Check which player won
+                if (player1Id == winnerId.Value)
+                {
+                    player1ActualScore = 1;
+                    player2ActualScore = 0;
+                    // update wins and losses
+                    player1Stats.Wins += 1;
+                    player2Stats.Losses += 1;
+
+                }
+                else
+                {
+                    player1ActualScore = 0;
+                    player2ActualScore = 1;
+                    // update wins and losses
+                    player1Stats.Losses += 1;
+                    player2Stats.Wins += 1;
+
+                }
+            }
+            else
+            {
+                // In case of a draw
+                player1ActualScore = 0.5;
+                player2ActualScore = 0.5;
+            }
+
+            // Calculate new Elo ratings
+            int newPlayer1Rating = player1Stats.EloRating.Value + (int)(K * (player1ActualScore - player1Expected));
+            int newPlayer2Rating = player2Stats.EloRating.Value + (int)(K * (player2ActualScore - player2Expected));
+
+            // Set new Elo ratings
+            player1Stats.EloRating = newPlayer1Rating;
+            player2Stats.EloRating = newPlayer2Rating;
+
+            // Increase number of games played for both
+            player1Stats.TotalGamesPlayed += 1;
+            player2Stats.TotalGamesPlayed += 1;
+
+            // Update user stats in the database
+            _userStatsRepository.UpdateStats(player1Stats);
+            _userStatsRepository.UpdateStats(player2Stats);
         }
 
     }

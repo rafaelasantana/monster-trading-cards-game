@@ -20,6 +20,7 @@ namespace MTCG.Controllers
         private readonly UserStatsRepository _userStatsRepository;
         private readonly TradingRepository _tradingRepository;
         private readonly BattleRepository _battleRepository;
+        private readonly BattleLogsRepository _battleLogsRepository;
         private readonly BattleService _battleService;
         private readonly UserService _userService;
         private readonly SessionManager _sessionManager;
@@ -36,7 +37,8 @@ namespace MTCG.Controllers
             _userRepository = new UserRepository(dbConnectionManager);
             _transactionRepository = new TransactionRepository(dbConnectionManager, _userRepository, _packageRepository);
             _battleRepository = new BattleRepository(dbConnectionManager);
-            _battleService = new BattleService(_deckRepository, _battleRepository, _userStatsRepository);
+            _battleLogsRepository = new BattleLogsRepository(dbConnectionManager);
+            _battleService = new BattleService(_deckRepository, _battleRepository, _userStatsRepository, _battleLogsRepository);
             _userService = new UserService(_userRepository, _userStatsRepository, _userProfileRepository);
             _sessionManager = new SessionManager();
         }

@@ -41,7 +41,7 @@ namespace MTCG.Data.Repositories
         public void Update(Package package)
         {
             // open connection
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -83,7 +83,7 @@ namespace MTCG.Data.Repositories
         private void SaveNew(Package package)
         {
             // open connection
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -134,7 +134,7 @@ namespace MTCG.Data.Repositories
         private bool HasExistingCard(Package package)
         {
             // open connection
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -166,7 +166,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public Package? GetNextAvailablePackage()
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -193,7 +193,7 @@ namespace MTCG.Data.Repositories
         /// <param name="user"></param>
         public void AssignPackageToUser(Package package, User user)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();

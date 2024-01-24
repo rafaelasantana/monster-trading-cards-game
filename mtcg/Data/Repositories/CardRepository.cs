@@ -18,7 +18,7 @@ namespace MTCG.Data.Repositories
         public void Save(Card card)
         {
             // open connection
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -68,7 +68,7 @@ namespace MTCG.Data.Repositories
         public void Update(Card card)
         {
             // open connection
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -112,7 +112,7 @@ namespace MTCG.Data.Repositories
         public List<Card> GetCardsByUserId(int? userId)
         {
             // open connection
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();

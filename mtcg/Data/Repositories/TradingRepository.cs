@@ -16,7 +16,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public IEnumerable<ExtendedTradingOffer> GetAllOffers()
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -49,7 +49,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public TradingOffer? GetOfferById(int offerId)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -78,7 +78,7 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public bool CreateOffer(TradingOffer offer)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -116,7 +116,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public void CheckOffer(TradingOffer offer)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -168,7 +168,7 @@ namespace MTCG.Data.Repositories
                 /// <returns></returns>
         public bool ExecuteTrade(string? tradingId, int? userId, string? userCardId)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -266,7 +266,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public bool DeleteOffer(string? tradingId, int? userId)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();

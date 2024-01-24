@@ -17,7 +17,7 @@ namespace MTCG.Data.Repositories
         /// <param name="transaction"></param>
         public void Save(Transaction transaction)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -40,7 +40,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public bool PurchasePackage(User user, out string errorMessage)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();

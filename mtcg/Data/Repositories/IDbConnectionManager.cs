@@ -1,8 +1,9 @@
+using Npgsql;
 namespace MTCG.Data.Repositories
 {
     public interface IDbConnectionManager
     {
-        System.Data.IDbConnection GetConnection();
+        NpgsqlConnection GetConnection();
         bool TestConnection();
     }
 }

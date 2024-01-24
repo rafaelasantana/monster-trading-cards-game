@@ -8,51 +8,65 @@ namespace MTCG.Data.Repositories
     public class BattleRepository
     {
         private readonly IDbConnectionManager _dbConnectionManager;
-        private NpgsqlConnection _connection;
         private readonly string _battlesTable = "battles";
-        private readonly string _battleLogsTable = "battleLogs";
-        private readonly string _battleFields = "id, player1Id, player2Id, status, startTime, endTime, winnerId";
-        private readonly string _battleLogFields = "id, battleId, roundNumber, player1CardId, player2CardId, roundResult, createdAt";
 
         public BattleRepository(IDbConnectionManager dbConnectionManager)
         {
             _dbConnectionManager = dbConnectionManager;
-            _connection = _dbConnectionManager.GetConnection() as NpgsqlConnection;
         }
 
+        /// <summary>
+        /// Retrieves a pending battle
+        /// </summary>
+        /// <returns></returns>
         public Battle? GetPendingBattle()
         {
-            if (_connection.State != ConnectionState.Open)
+            try
             {
-                _connection.Open();
+                using var connection = _dbConnectionManager.GetConnection() as NpgsqlConnection;
+                if (connection.State != ConnectionState.Open)
+                {
+                    connection.Open();
+                }
+
+                string query = $"SELECT * FROM {_battlesTable} WHERE player2Id IS NULL AND status = 'pending' LIMIT 1";
+                Battle? pendingBattle = null;
+
+                using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
+                using var reader = command.ExecuteReader();
+
+                if (reader.Read())
+                {
+                    pendingBattle = DataMapperService.MapToObject<Battle>(reader);
+                }
+
+                return pendingBattle;
             }
-
-            string query = $"SELECT * FROM {_battlesTable} WHERE player2Id IS NULL AND status = 'pending' LIMIT 1";
-            Battle? pendingBattle = null;
-
-            using var command = new NpgsqlCommand(query, _connection as NpgsqlConnection);
-            using var reader = command.ExecuteReader();
-
-            if (reader.Read())
+            catch (Exception ex)
             {
-                pendingBattle = DataMapperService.MapToObject<Battle>(reader);
+                Console.WriteLine($"Error in GetPendingBattle: {ex.Message}");
+                throw;
             }
-
-            return pendingBattle;
         }
 
 
+        /// <summary>
+        /// Creates a new battle with this player as player 1, sets the battle status to pending
+        /// </summary>
+        /// <param name="playerId"></param>
+        /// <returns></returns>
         public int CreatePendingBattle(int? playerId)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             var query = $"INSERT INTO {_battlesTable} (player1Id, status) VALUES (@PlayerId, 'pending') RETURNING id";
             int newBattleId = 0;
 
-            using var command = new NpgsqlCommand(query, _connection as NpgsqlConnection);
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
 
             // Adding parameters to the command
             command.Parameters.AddWithValue("@PlayerId", playerId ?? (object)DBNull.Value);
@@ -63,21 +77,26 @@ namespace MTCG.Data.Repositories
             {
                 newBattleId = Convert.ToInt32(result);
             }
-
             return newBattleId;
         }
 
 
-        // Sets a player as player2 for a battle with a given ID and updates the battle status
+        /// <summary>
+        /// Sets a player as player2 for a battle with a given ID and updates the battle status
+        /// </summary>
+        /// <param name="battleId"></param>
+        /// <param name="playerId"></param>
+        /// <exception cref="InvalidOperationException"></exception>
         public void SetPlayerForBattle(int? battleId, int? playerId)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             string updateQuery = $"UPDATE {_battlesTable} SET player2Id = @PlayerId, status = 'ongoing' WHERE id = @BattleId AND player2Id IS NULL";
-            using var command = new NpgsqlCommand(updateQuery, _connection as NpgsqlConnection);
+            using var command = new NpgsqlCommand(updateQuery, connection as NpgsqlConnection);
 
             // Adding parameters to the command
             command.Parameters.AddWithValue("@PlayerId", playerId ?? (object)DBNull.Value);
@@ -92,16 +111,22 @@ namespace MTCG.Data.Repositories
             }
         }
 
+        /// <summary>
+        /// Retrieves the battle record with this id
+        /// </summary>
+        /// <param name="battleId"></param>
+        /// <returns></returns>
         public Battle GetBattleById(int? battleId)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             string query = $"SELECT * FROM {_battlesTable} WHERE id = @BattleId";
 
-            using var command = new NpgsqlCommand(query, _connection as NpgsqlConnection);
+            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
             // Adding the parameter to the command
             command.Parameters.AddWithValue("@BattleId", battleId ?? (object)DBNull.Value);
 
@@ -115,40 +140,66 @@ namespace MTCG.Data.Repositories
             return battle;
         }
 
+        /// <summary>
+        /// Updates the battle status
+        /// </summary>
+        /// <param name="battleId"></param>
+        /// <param name="newStatus"></param>
         public void UpdateBattleStatus(int? battleId, string newStatus)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             string updateQuery = $"UPDATE {_battlesTable} SET status = @NewStatus WHERE id = @BattleId";
 
-            using var command = new NpgsqlCommand(updateQuery, _connection as NpgsqlConnection);
+            using var command = new NpgsqlCommand(updateQuery, connection as NpgsqlConnection);
             command.Parameters.AddWithValue("@NewStatus", newStatus);
             command.Parameters.AddWithValue("@BattleId", battleId);
 
             command.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// Updates the battle record with the winner id, sets the status to 'completed' and sets the end time
+        /// </summary>
+        /// <param name="battleId"></param>
+        /// <param name="winnerId"></param>
+        /// <exception cref="InvalidOperationException"></exception>
 
-        // // New method to save the outcome of a battle
-        // public void SaveBattleOutcome(BattleResult battleResult)
-        // {
-        //     // Logic to save the battle result to the database
-        // }
+        public void UpdateBattleOutcome(int battleId, int? winnerId)
+        {
+            using var connection = _dbConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
 
-        // // New method to log a battle round
-        // public void LogBattleRound(int battleId, RoundResult roundResult)
-        // {
-        //     // Logic to log the round details to the database
-        // }
+            string updateQuery = $"UPDATE {_battlesTable} SET endTime = @EndTime, winnerId = @WinnerId, status = 'completed' WHERE id = @BattleId";
 
-        // // New method to retrieve a deck for a user
-        // public List<Card> GetDeckForUser(int userId)
-        // {
-        //     // Logic to retrieve the user's deck from the database
-        // }
+            using var command = new NpgsqlCommand(updateQuery, connection as NpgsqlConnection);
+            command.Parameters.AddWithValue("@BattleId", battleId);
 
+            if (winnerId.HasValue)
+            {
+                command.Parameters.AddWithValue("@WinnerId", winnerId.Value);
+            }
+            else
+            {
+                // It was a tie, there's no winner
+                command.Parameters.AddWithValue("@WinnerId", DBNull.Value);
+            }
+
+            command.Parameters.AddWithValue("@EndTime", DateTime.UtcNow);
+
+            int rowsAffected = command.ExecuteNonQuery();
+
+            if (rowsAffected == 0)
+            {
+                throw new InvalidOperationException("Failed to update battle outcome, or battle does not exist.");
+            }
+        }
     }
 }

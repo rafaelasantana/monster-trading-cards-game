@@ -18,7 +18,7 @@ namespace MTCG.Data.Repositories
         /// <returns></returns>
         public UserProfile? GetUserProfile(int? userId)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -44,7 +44,7 @@ namespace MTCG.Data.Repositories
         /// <param name="userProfile"></param>
         public void CreateUserProfile(UserProfile userProfile)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -63,7 +63,7 @@ namespace MTCG.Data.Repositories
 
         public void UpdateUserProfile(int? userId, UserProfile updatedProfile)
         {
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();

@@ -20,44 +20,51 @@ namespace MTCG.Data.Repositories
         /// <exception cref="InvalidOperationException"></exception>
         public List<Card> GetDeckByUserId(int? userId)
         {
-            var connection = _dbConnectionManager.GetConnection();
-            if (connection.State != ConnectionState.Open)
+            if (!userId.HasValue)
             {
-                connection.Open();
-            }
-
-            var query = @"
-                SELECT cards.*
-                FROM deckCards
-                INNER JOIN cards ON deckCards.cardId = cards.id
-                WHERE deckCards.ownerId = @UserId;";
-
-            using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
-
-            if (userId.HasValue)
-            {
-                command.Parameters.AddWithValue("@UserId", userId.Value);
-            }
-            else
-            {
-                command.Parameters.AddWithValue("@UserId", DBNull.Value);
+                throw new InvalidOperationException("User ID cannot be null");
             }
 
             var cards = new List<Card>();
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
+            try
             {
-                var card = DataMapperService.MapToObject<Card>(reader);
-                cards.Add(card);
-            }
+                using var connection = _dbConnectionManager.GetConnection();
+                if (connection.State != ConnectionState.Open)
+                {
+                    connection.Open();
+                }
 
-            if (cards.Count == 0)
+                var query = @"
+                    SELECT cards.*
+                    FROM deckCards
+                    INNER JOIN cards ON deckCards.cardId = cards.id
+                    WHERE deckCards.ownerId = @UserId;";
+
+                using (var command = new NpgsqlCommand(query, connection as NpgsqlConnection))
+                {
+                    command.Parameters.AddWithValue("@UserId", userId.Value);
+
+                    using var reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        var card = DataMapperService.MapToObject<Card>(reader);
+                        cards.Add(card);
+                    }
+                }
+
+                if (cards.Count == 0)
+                {
+                    throw new InvalidOperationException("User has no cards on the deck.");
+                }
+                return cards;
+            }
+            catch (Exception ex)
             {
-                throw new InvalidOperationException("No cards found for the user.");
+                Console.WriteLine($"Error in GetDeckByUserId: {ex.Message}");
+                throw;
             }
-
-            return cards;
         }
+
 
         public bool ConfigureDeck(int? userId, string[] cardIds)
         {
@@ -66,7 +73,7 @@ namespace MTCG.Data.Repositories
                 throw new ArgumentException("The deck must contain exactly 4 cards.");
             }
 
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -133,8 +140,7 @@ namespace MTCG.Data.Repositories
 
         public void TransferCardToUsersDeck(string cardId, int userId)
         {
-            Console.WriteLine("in TransferCardToUsersDeck");
-            var connection = _dbConnectionManager.GetConnection();
+            using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
             {
                 connection.Open();
@@ -144,7 +150,6 @@ namespace MTCG.Data.Repositories
             command.Parameters.AddWithValue("@OwnerId", userId);
             command.Parameters.AddWithValue("@CardId", cardId);
             command.ExecuteNonQuery();
-            Console.WriteLine("executed update in TransferCardToUsersDeck");
         }
 
     }
