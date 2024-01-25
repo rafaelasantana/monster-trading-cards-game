@@ -11,6 +11,7 @@ namespace MTCG.Data.Services
         private readonly BattleRepository _battleRepository;
         private readonly UserStatsRepository _userStatsRepository;
         private readonly BattleLogsRepository _battleLogsRepository;
+        private static readonly object _battleRequestLock = new object();
 
         public BattleService(
             DeckRepository deckRepository,
@@ -42,22 +43,27 @@ namespace MTCG.Data.Services
             var playerDeck = _deckRepository.GetDeckByUserId(playerId);
             if (playerDeck == null || !playerDeck.Any())
                 throw new InvalidOperationException("Player does not have a valid deck.");
-            // Check for an existing pending battle and attempt to join
-            var pendingBattle = _battleRepository.GetPendingBattle();
-            if (pendingBattle != null && pendingBattle.Player1Id != playerId)
+
+            lock (_battleRequestLock)
             {
-                // Join the pending battle and conduct battle
-                _battleRepository.SetPlayerForBattle(pendingBattle.Id, playerId);
-                return ConductBattle(pendingBattle.Id);
-            }
-            else
-            {
-                // No pending battle, create a new one
-                int newBattleId = _battleRepository.CreatePendingBattle(playerId);
-                // Return a result indicating a pending status since no opponent yet
-                return new BattleResult { Status = BattleStatus.Pending, BattleId = newBattleId };
+                // Check for an existing pending battle and attempt to join
+                var pendingBattle = _battleRepository.GetPendingBattle();
+                if (pendingBattle != null && pendingBattle.Player1Id != playerId)
+                {
+                    // Join the pending battle and conduct battle
+                    _battleRepository.SetPlayerForBattle(pendingBattle.Id, playerId);
+                    return ConductBattle(pendingBattle.Id);
+                }
+                else
+                {
+                    // No pending battle, create a new one
+                    int newBattleId = _battleRepository.CreatePendingBattle(playerId);
+                    // Return a result indicating a pending status since no opponent yet
+                    return new BattleResult { Status = BattleStatus.Pending, BattleId = newBattleId };
+                }
             }
         }
+
 
         /// <summary>
         /// Conducts the battle and returns the result
