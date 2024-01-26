@@ -16,7 +16,7 @@ namespace MTCG
                 .Build();
 
             // Retrieve the connection string
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var connectionString = configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
             // Create database manager
             var dbConnectionManager = new DbConnectionManager(connectionString);

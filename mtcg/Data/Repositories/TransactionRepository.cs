@@ -25,9 +25,9 @@ namespace MTCG.Data.Repositories
 
             var query = $"INSERT INTO {_table} (userId, packageId, price) VALUES (@UserId, @PackageId, @Price)";
             using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
-            command.Parameters.AddWithValue("@UserId", transaction.UserId);
-            command.Parameters.AddWithValue("@PackageId", transaction.PackageId);
-            command.Parameters.AddWithValue("@Price", transaction.Price);
+            command.Parameters.AddWithValue("@UserId", transaction.UserId!);
+            command.Parameters.AddWithValue("@PackageId", transaction.PackageId!);
+            command.Parameters.AddWithValue("@Price", transaction.Price!);
             command.ExecuteNonQuery();
         }
 

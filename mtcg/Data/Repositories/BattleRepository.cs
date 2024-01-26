@@ -55,7 +55,7 @@ namespace MTCG.Data.Repositories
         /// </summary>
         /// <param name="playerId"></param>
         /// <returns></returns>
-        public int CreatePendingBattle(int? playerId)
+        public int? CreatePendingBattle(int? playerId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
@@ -64,7 +64,7 @@ namespace MTCG.Data.Repositories
             }
 
             var query = $"INSERT INTO {_battlesTable} (player1Id, status) VALUES (@PlayerId, 'pending') RETURNING id";
-            int newBattleId = 0;
+            int? newBattleId = null;
 
             using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
 
@@ -116,7 +116,7 @@ namespace MTCG.Data.Repositories
         /// </summary>
         /// <param name="battleId"></param>
         /// <returns></returns>
-        public Battle GetBattleById(int? battleId)
+        public Battle? GetBattleById(int? battleId)
         {
             using var connection = _dbConnectionManager.GetConnection();
             if (connection.State != ConnectionState.Open)
@@ -132,7 +132,7 @@ namespace MTCG.Data.Repositories
 
             // Executing the command
             using var reader = command.ExecuteReader();
-            Battle battle = null;
+            Battle? battle = null;
             if (reader.Read())
             {
                 battle = DataMapperService.MapToObject<Battle>(reader);
@@ -152,12 +152,13 @@ namespace MTCG.Data.Repositories
             {
                 connection.Open();
             }
+            if (battleId == null) throw new InvalidOperationException("Could not update Battle status without a Battle ID.");
 
             string updateQuery = $"UPDATE {_battlesTable} SET status = @NewStatus WHERE id = @BattleId";
 
             using var command = new NpgsqlCommand(updateQuery, connection as NpgsqlConnection);
             command.Parameters.AddWithValue("@NewStatus", newStatus);
-            command.Parameters.AddWithValue("@BattleId", battleId);
+            command.Parameters.AddWithValue("@BattleId", battleId!);
 
             command.ExecuteNonQuery();
         }

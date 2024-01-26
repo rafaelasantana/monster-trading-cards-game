@@ -57,7 +57,8 @@ namespace MTCG.Data.Services
                 else
                 {
                     // No pending battle, create a new one
-                    int newBattleId = _battleRepository.CreatePendingBattle(playerId);
+                    int? newBattleId = _battleRepository.CreatePendingBattle(playerId);
+                    if (newBattleId == null) throw new InvalidOperationException("Could not create a pending battle.");
                     // Return a result indicating a pending status since no opponent yet
                     return new BattleResult { Status = BattleStatus.Pending, BattleId = newBattleId };
                 }
@@ -74,18 +75,19 @@ namespace MTCG.Data.Services
         private BattleResult ConductBattle(int? battleId)
         {
             // Retrieve battle details
-            Battle battle = _battleRepository.GetBattleById(battleId);
+            Battle? battle = _battleRepository.GetBattleById(battleId);
             // Ensure that both player IDs are not null
-            if (!battle.Player1Id.HasValue || !battle.Player2Id.HasValue || !battleId.HasValue)
+            if (battle == null || battle.Player1Id == null || battle.Player2Id == null)
             {
                 throw new InvalidOperationException("Battle must have two players, or battle does not exist.");
             }
+
             // Update battle status to ongoing
             _battleRepository.UpdateBattleStatus(battleId, "ongoing");
             // Create new battle result object
             BattleResult battleResult = new BattleResult
             {
-                BattleId = battleId.Value,
+                BattleId = battleId!.Value,
                 Status = BattleStatus.Ongoing,
                 Summary = "\n________ BATTLE SUMMARY ________\n"
             };
@@ -126,7 +128,7 @@ namespace MTCG.Data.Services
                 // Log round for battle result
                 battleResult.LogRound(roundResult);
                 // Save new battle log record
-                _battleLogsRepository.LogBattleRound(battleId.Value, roundCounter, roundResult.Player1CardId, roundResult.Player2CardId, roundResult.Details);
+                _battleLogsRepository.LogBattleRound(battleId.Value, roundCounter, roundResult.Player1CardId!, roundResult.Player2CardId!, roundResult.Details!);
                 // Add round details to summary
                 battleResult.Summary += roundResult.Details;
             }
@@ -145,7 +147,7 @@ namespace MTCG.Data.Services
                 _battleRepository.UpdateBattleOutcome(battleId.Value, battleResult.WinnerId);
                 // Calculate elo ratings and update user stats
                 UpdatePlayerStats(battle.Player1Id.Value, battle.Player2Id.Value, battleResult.WinnerId);
-                // battleResult.PrintBattleResult();
+                battleResult.PrintBattleResult();
                 return battleResult;
             }
             else
@@ -167,8 +169,11 @@ namespace MTCG.Data.Services
         {
             var random = new Random();
             // Select a random card from each player's deck
-            Card cardPlayer1 = deckPlayer1[random.Next(deckPlayer1.Count)];
-            Card cardPlayer2 = deckPlayer2[random.Next(deckPlayer2.Count)];
+            Card? cardPlayer1 = deckPlayer1[random.Next(deckPlayer1.Count)];
+            Card? cardPlayer2 = deckPlayer2[random.Next(deckPlayer2.Count)];
+
+            // Ensure cards are valid
+            if (cardPlayer1 == null || cardPlayer2 == null) throw new InvalidOperationException("Could not conduct round with an invalid card.");
 
             // Create a new round result object
             var roundResult = new RoundResult
@@ -181,13 +186,13 @@ namespace MTCG.Data.Services
             roundResult.Details += $"\nPlayer 1 plays with {cardPlayer1.Name}, Player 2 plays with {cardPlayer2.Name}\n";
 
             // Apply game logic to determine the winner of the round
-            Card winnerCard = DecideWinner(cardPlayer1, cardPlayer2);
+            Card? winnerCard = DecideWinner(cardPlayer1!, cardPlayer2!);
 
             if (winnerCard == null)
             {
                 // It's a tie, no cards are moved
                 roundResult.WinningCardId = "None";
-                roundResult.Details += "It's a tie!\n";
+                roundResult.Details += "\nIt's a TIE!\n";
             }
             else
             {
@@ -201,13 +206,13 @@ namespace MTCG.Data.Services
                 {
                     roundResult.Details += $"\nWinner: {cardPlayer2.Name}\n";
                     roundResult.Details += "\nPlayer 1 loses the card to Player 2\n";
-                    _deckRepository.TransferCardToUsersDeck(cardPlayer1.Id, player2Id);
+                    _deckRepository.TransferCardToUsersDeck(cardPlayer1.Id!, player2Id);
                 }
                 else
                 {
                     roundResult.Details += $"\nWinner: {cardPlayer1.Name}\n";
                     roundResult.Details += "\nPlayer 2 loses the card to Player 1\n";
-                    _deckRepository.TransferCardToUsersDeck(cardPlayer2.Id, player1Id);
+                    _deckRepository.TransferCardToUsersDeck(cardPlayer2.Id!, player1Id);
                 }
             }
             return roundResult;
@@ -219,7 +224,7 @@ namespace MTCG.Data.Services
         /// <param name="card1"></param>
         /// <param name="card2"></param>
         /// <returns></returns>
-        private Card DecideWinner(Card card1, Card card2)
+        private Card? DecideWinner(Card card1, Card card2)
         {
             // Apply special rules first (e.g., Goblins are afraid of Dragons)
             if (SpecialRuleApplies(card1, card2, out var specialRuleWinner))
@@ -232,13 +237,12 @@ namespace MTCG.Data.Services
             {
                 if (card1.Damage > card2.Damage) return card1;
                 else if (card2.Damage > card1.Damage) return card2;
-                else return null;
             }
             else
             {
                 // Apply elemental effectiveness
-                double damageCard1 = ApplyElementalEffectiveness(card1, card2);
-                double damageCard2 = ApplyElementalEffectiveness(card2, card1);
+                double damageCard1 = ApplyElementalEffectiveness(card1!, card2!);
+                double damageCard2 = ApplyElementalEffectiveness(card2!, card1!);
 
                 // Decide the winner based on the effective damage
                 if (damageCard1 > damageCard2)
@@ -249,12 +253,8 @@ namespace MTCG.Data.Services
                 {
                     return card2;
                 }
-                else
-                {
-                    // In case of a tie, return null
-                    return null;
-                }
             }
+            return null;
         }
 
         /// <summary>
@@ -264,65 +264,65 @@ namespace MTCG.Data.Services
         /// <param name="card2"></param>
         /// <param name="winner"></param>
         /// <returns></returns>
-        private bool SpecialRuleApplies(Card card1, Card card2, out Card winner)
+        private bool SpecialRuleApplies(Card card1, Card card2, out Card? winner)
         {
             winner = null;
 
             // Goblins are too afraid of Dragons to attack
-            if (card1.Name.Contains("Goblin") && card2.Name.Contains("Dragon"))
+            if (card1?.Name?.Contains("Goblin") == true && card2?.Name?.Contains("Dragon") == true)
             {
                 winner = card2;
                 return true;
             }
-            else if (card2.Name.Contains("Goblin") && card1.Name.Contains("Dragon"))
+            else if (card2?.Name?.Contains("Goblin") == true && card1?.Name?.Contains("Dragon") == true)
             {
                 winner = card1;
                 return true;
             }
 
             // Wizard can control Orks so they are not able to damage them
-            if (card1.Name.Contains("Wizard") && card2.Name.Contains("Ork"))
+            if (card1?.Name?.Contains("Wizard") == true && card2?.Name?.Contains("Ork") == true)
             {
                 winner = card1;
                 return true;
             }
-            else if (card2.Name.Contains("Wizard") && card1.Name.Contains("Ork"))
+            else if (card2?.Name?.Contains("Wizard") == true && card1?.Name?.Contains("Ork") == true)
             {
                 winner = card2;
                 return true;
             }
 
             // The armor of Knights is so heavy that WaterSpells make them drown instantly
-            if (card1.Name.Contains("Knight") && card2.ElementType == "Water" && card2.CardType == "Spell")
+            if (card1?.Name?.Contains("Knight") == true && card2?.ElementType?.Contains("Water") == true && card2?.CardType?.Contains("Spell") == true)
             {
                 winner = card2;
                 return true;
             }
-            else if (card2.Name.Contains("Knight") && card1.ElementType == "Water" && card1.CardType == "Spell")
+            else if (card2?.Name?.Contains("Knight") == true && card1?.ElementType?.Contains("Water") == true && card1?.CardType?.Contains("Spell") == true)
             {
                 winner = card1;
                 return true;
             }
 
             // The Kraken is immune against spells
-            if (card1.Name.Contains("Kraken") && card2.CardType == "Spell")
+            if (card1?.Name?.Contains("Kraken") == true && card2?.CardType?.Contains("Spell") == true)
             {
                 winner = card1;
                 return true;
             }
-            else if (card2.Name.Contains("Kraken") && card1.CardType == "Spell")
+            else if (card2?.Name?.Contains("Kraken") == true && card1?.CardType?.Contains("Spell") == true)
             {
                 winner = card2;
                 return true;
             }
 
             // The FireElves know Dragons since they were little and can evade their attacks
-            if (card1.Name.Contains("FireElf") && card2.Name.Contains("Dragon"))
+            if (card1?.Name?.Contains("FireElf") == true && card2?.Name?.Contains("Dragon") == true)
             {
                 winner = card1;
                 return true;
             }
-            else if (card2.Name.Contains("FireElf") && card1.Name.Contains("Dragon"))
+            else if (card2?.Name?.Contains("FireElf") == true && card1?.Name?.Contains("Dragon") == true)
             {
                 winner = card2;
                 return true;
@@ -377,8 +377,11 @@ namespace MTCG.Data.Services
             int K = 30; // K-factor
 
             // Retrieve current Elo ratings
-            UserStats player1Stats = _userStatsRepository.GetStatsByUserId(player1Id);
-            UserStats player2Stats = _userStatsRepository.GetStatsByUserId(player2Id);
+            UserStats? player1Stats = _userStatsRepository.GetStatsByUserId(player1Id);
+            UserStats? player2Stats = _userStatsRepository.GetStatsByUserId(player2Id);
+
+            // Ensure User Stats are valid
+            if (player1Stats == null || player2Stats == null) throw new InvalidOperationException("Could not update player stats with an invalid record.");
 
             // Check if both players have Elo values and if not, set it to starting value of 100
             if (!player1Stats.EloRating.HasValue) player1Stats.EloRating = 100;

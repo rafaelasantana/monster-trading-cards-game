@@ -58,11 +58,11 @@ namespace MTCG.Data.Repositories
                 WHERE userId = @UserId";
 
             using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
-            command.Parameters.AddWithValue("@EloRating", stats.EloRating);
-            command.Parameters.AddWithValue("@Wins", stats.Wins);
-            command.Parameters.AddWithValue("@Losses", stats.Losses);
-            command.Parameters.AddWithValue("@TotalGamesPlayed", stats.TotalGamesPlayed);
-            command.Parameters.AddWithValue("@UserId", stats.UserId);
+            command.Parameters.AddWithValue("@EloRating", stats.EloRating!);
+            command.Parameters.AddWithValue("@Wins", stats.Wins!);
+            command.Parameters.AddWithValue("@Losses", stats.Losses!);
+            command.Parameters.AddWithValue("@TotalGamesPlayed", stats.TotalGamesPlayed!);
+            command.Parameters.AddWithValue("@UserId", stats.UserId!);
 
             command.ExecuteNonQuery();
         }

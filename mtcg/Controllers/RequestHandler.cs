@@ -397,7 +397,7 @@ namespace MTCG.Controllers
             try
             {
                 User user = ValidateTokenAndGetUser();
-                var deck = _deckRepository.GetDeckByUserId(user.Id);
+                List<Card> deck = _deckRepository.GetDeckByUserId(user.Id);
                 if (deck.Count == 0)
                 {
                     SendResponse("Your deck is empty.", HttpStatusCode.OK);

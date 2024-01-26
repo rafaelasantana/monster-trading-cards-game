@@ -51,16 +51,10 @@ namespace MTCG.Data.Repositories
                         cards.Add(card);
                     }
                 }
-
-                if (cards.Count == 0)
-                {
-                    throw new InvalidOperationException("User has no cards on the deck.");
-                }
                 return cards;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"Error in GetDeckByUserId: {ex.Message}");
                 throw;
             }
         }

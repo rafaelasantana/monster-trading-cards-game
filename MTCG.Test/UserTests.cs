@@ -9,7 +9,7 @@ namespace MTCG.Test
 {
     public class UserTests
     {
-        private NpgsqlConnection _connection;
+        private DbConnectionManager _dBConnectionManager;
         private UserRepository _userRepository;
         private UserStatsRepository _userStatsRepository;
         private UserProfileRepository _userProfileRepository;
@@ -18,10 +18,11 @@ namespace MTCG.Test
         [SetUp]
         public void Setup()
         {
-            _connection = new NpgsqlConnection("Host=localhost;Port=5434;Database=mtcg-testdb;Username=mtcg-test-user;Password=mtcgpassword;");
-            _userStatsRepository = new UserStatsRepository(new DbConnectionManager(_connection));
-            _userProfileRepository = new UserProfileRepository(new DbConnectionManager(_connection));
-            _userRepository = new UserRepository(new DbConnectionManager(_connection));
+
+            _dBConnectionManager = new DbConnectionManager("Host=localhost;Port=5434;Database=mtcg-testdb;Username=mtcg-test-user;Password=mtcgpassword;");
+            _userStatsRepository = new UserStatsRepository(_dBConnectionManager);
+            _userProfileRepository = new UserProfileRepository(_dBConnectionManager);
+            _userRepository = new UserRepository(_dBConnectionManager);
             _userService = new UserService(_userRepository, _userStatsRepository, _userProfileRepository);
         }
 
@@ -46,12 +47,13 @@ namespace MTCG.Test
         // Helper method to get user by username
         private User? GetUserByUsername(string username)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
-            using var command = new NpgsqlCommand("SELECT * FROM users WHERE username = @Username", _connection);
+            using var command = new NpgsqlCommand("SELECT * FROM users WHERE username = @Username", connection);
             command.Parameters.AddWithValue("@Username", username);
 
             using var reader = command.ExecuteReader();
@@ -138,66 +140,13 @@ namespace MTCG.Test
             Assert.That(ex.Message, Is.EqualTo("Invalid username or password."));
         }
 
-
-        /// <summary>
-        /// Registers a new user and saves user data to the database
-        /// </summary>
-        // [Test]
-        // public void RegisterUser_WithNewUser_ShouldCreateUserAndRelatedData()
-        // {
-        //     if (_connection.State != ConnectionState.Open)
-        //     {
-        //         _connection.Open();
-        //     }
-        //     // Arrange
-        //     var newUser = new User { Username = "testUser_" + Guid.NewGuid().ToString(), Password = "testPassword" };
-
-        //     // Act
-        //     _userService.RegisterUser(newUser);
-
-        //     // Assert - Check if the user is added to the database
-        //     using var queryUsersCommand = new NpgsqlCommand("SELECT * FROM users WHERE username = @Username", _connection);
-        //     queryUsersCommand.Parameters.AddWithValue("@Username", newUser.Username);
-        //     User? userInDb = null;
-        //     using var queryUsersReader = queryUsersCommand.ExecuteReader();
-        //     if (queryUsersReader.Read())
-        //     {
-        //         userInDb = DataMapperService.MapToObject<User>(queryUsersReader);
-        //     }
-        //     Assert.That(userInDb, Is.Not.Null, "User should be added to the database");
-        //     Assert.That(userInDb.Username, Is.EqualTo(newUser.Username), "Username should match");
-
-
-        //     // Assert - Check if the user profile is created
-        //     using var userProfileCommand = new NpgsqlCommand("SELECT * FROM userprofiles WHERE userid = @UserId", _connection);
-        //     userProfileCommand.Parameters.AddWithValue("@UserId", userInDb.Id!);
-        //     UserProfile? userProfileInDb = null;
-
-        //     using var userProfileReader = userProfileCommand.ExecuteReader();
-        //     if (userProfileReader.Read())
-        //     {
-        //         userProfileInDb = DataMapperService.MapToObject<UserProfile>(userProfileReader);
-        //     }
-        //     Assert.That(userProfileInDb, Is.Not.Null, "User profile should be created for the new user");
-
-        //     // Assert - Check if the user stats are created
-        //     using var userStatsCommand = new NpgsqlCommand("SELECT * FROM userstats WHERE userid = @UserId", _connection);
-        //     userStatsCommand.Parameters.AddWithValue("@UserId", userInDb.Id!);
-        //     UserStats? userStatsInDb = null;
-
-        //     using var userStatsReader = userStatsCommand.ExecuteReader();
-        //     if (userStatsReader.Read())
-        //     {
-        //         userStatsInDb = DataMapperService.MapToObject<UserStats>(userStatsReader);
-        //     }
-        //     Assert.That(userStatsInDb, Is.Not.Null, "User stats should be created for the new user");
-        // }
         [Test]
         public void RegisterUser_WithNewUser_ShouldCreateUserAndRelatedData()
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
             // Arrange
             var newUser = new User { Username = "testUser_" + Guid.NewGuid().ToString(), Password = "testPassword" };
@@ -208,7 +157,7 @@ namespace MTCG.Test
                 _userService.RegisterUser(newUser);
 
                 // Assert - Check if the user is added to the database
-                using var queryUsersCommand = new NpgsqlCommand("SELECT * FROM users WHERE username = @Username", _connection);
+                using var queryUsersCommand = new NpgsqlCommand("SELECT * FROM users WHERE username = @Username", connection);
                 queryUsersCommand.Parameters.AddWithValue("@Username", newUser.Username);
                 User? userInDb = null;
 
@@ -225,7 +174,7 @@ namespace MTCG.Test
 
 
                 // Assert - Check if the user profile is created
-                using var userProfileCommand = new NpgsqlCommand("SELECT * FROM userprofiles WHERE userid = @UserId", _connection);
+                using var userProfileCommand = new NpgsqlCommand("SELECT * FROM userprofiles WHERE userid = @UserId", connection);
                 userProfileCommand.Parameters.AddWithValue("@UserId", userInDb.Id!);
                 UserProfile? userProfileInDb = null;
 
@@ -240,7 +189,7 @@ namespace MTCG.Test
                 Assert.That(userProfileInDb, Is.Not.Null, "User profile should be created for the new user");
 
                 // Assert - Check if the user stats are created
-                using var userStatsCommand = new NpgsqlCommand("SELECT * FROM userstats WHERE userid = @UserId", _connection);
+                using var userStatsCommand = new NpgsqlCommand("SELECT * FROM userstats WHERE userid = @UserId", connection);
                 userStatsCommand.Parameters.AddWithValue("@UserId", userInDb.Id!);
                 UserStats? userStatsInDb = null;
 
@@ -257,7 +206,7 @@ namespace MTCG.Test
             finally
             {
                 // Ensure the readers are closed and dispose of resources
-                _connection.Close();
+                connection.Close();
             }
         }
 
@@ -267,9 +216,10 @@ namespace MTCG.Test
         [Test]
         public void RegisterUser_WithExistingUsername_ShouldThrowException()
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             // Arrange - Create and register a user with a unique username
@@ -301,12 +251,13 @@ namespace MTCG.Test
 
         private void DeleteTestData(string tableName)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
-            using var command = new NpgsqlCommand($"DELETE FROM {tableName}", _connection);
+            using var command = new NpgsqlCommand($"DELETE FROM {tableName}", connection);
             command.ExecuteNonQuery();
         }
 

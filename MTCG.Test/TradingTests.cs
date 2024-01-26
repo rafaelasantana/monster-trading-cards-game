@@ -7,14 +7,15 @@ namespace MTCG.Test
 {
     public class TradingTests
     {
-        private NpgsqlConnection _connection;
+        private DbConnectionManager _dBConnectionManager;
         private TradingRepository _tradingRepository;
 
         [SetUp]
         public void Setup()
         {
-            _connection = new NpgsqlConnection("Host=localhost;Port=5434;Database=mtcg-testdb;Username=mtcg-test-user;Password=mtcgpassword;");
-            _tradingRepository = new TradingRepository(new DbConnectionManager(_connection));
+
+            _dBConnectionManager = new DbConnectionManager("Host=localhost;Port=5434;Database=mtcg-testdb;Username=mtcg-test-user;Password=mtcgpassword;");
+            _tradingRepository = new TradingRepository(_dBConnectionManager);
 
             // Set up test data
             SetupTestData();
@@ -46,15 +47,16 @@ namespace MTCG.Test
         /// <param name="cardType"></param>
         private void CreateTestCard(string name, double damage, int ownerId, bool inDeck, string cardType)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             var cardId = Guid.NewGuid().ToString();
             using var command = new NpgsqlCommand(
                 "INSERT INTO cards (id, name, damage, ownerId, cardType) VALUES (@Id, @Name, @Damage, @OwnerId, @CardType::CardType)",
-                _connection);
+                connection);
             command.Parameters.AddWithValue("@Id", cardId);
             command.Parameters.AddWithValue("@Name", name);
             command.Parameters.AddWithValue("@Damage", damage);
@@ -66,7 +68,7 @@ namespace MTCG.Test
             {
                 using var deckCommand = new NpgsqlCommand(
                     "INSERT INTO deckCards (cardId, ownerId) VALUES (@CardId, @OwnerId)",
-                    _connection);
+                    connection);
                 deckCommand.Parameters.AddWithValue("@CardId", cardId);
                 deckCommand.Parameters.AddWithValue("@OwnerId", ownerId);
                 deckCommand.ExecuteNonQuery();
@@ -84,15 +86,16 @@ namespace MTCG.Test
         /// <returns></returns>
         private string CreateTestTradingOffer(int ownerId, string cardId, string requestedType, int minDamage)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             var tradingId = Guid.NewGuid().ToString();
             using var command = new NpgsqlCommand(
                 "INSERT INTO tradings (id, ownerId, cardId, requestedType, minDamage) VALUES (@Id, @OwnerId, @CardId, @RequestedType, @MinDamage)",
-                _connection);
+                connection);
             command.Parameters.AddWithValue("@Id", tradingId);
             command.Parameters.AddWithValue("@OwnerId", ownerId);
             command.Parameters.AddWithValue("@CardId", cardId);
@@ -112,14 +115,15 @@ namespace MTCG.Test
         /// <returns>The created user id or 0 (invalid user id)</returns>
         private int CreateTestUser(string username, string password)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             using var command = new NpgsqlCommand(
                 "INSERT INTO users (username, password) VALUES (@Username, @Password) RETURNING id",
-                _connection);
+                connection);
             command.Parameters.AddWithValue("@Username", username);
             command.Parameters.AddWithValue("@Password", password);
             return (int?)command.ExecuteScalar() ?? 0;
@@ -132,9 +136,10 @@ namespace MTCG.Test
         [Test]
         public void CreateOffer_CardInUsersDeck_ShouldNotCreateOfferAndThrowException()
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
             // Arrange
             var testUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
@@ -166,12 +171,13 @@ namespace MTCG.Test
         /// <exception cref="InvalidOperationException"></exception>
         private T? GetScalarValue<T>(string query)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
-            using var command = new NpgsqlCommand(query, _connection);
+            using var command = new NpgsqlCommand(query, connection);
             var result = command.ExecuteScalar();
 
             // Check if result is DBNull or null
@@ -199,16 +205,17 @@ namespace MTCG.Test
         /// <returns></returns>
         private bool CheckIfOfferExists(int ownerId, string? cardId)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             if (string.IsNullOrEmpty(cardId)) return false;
 
             using var command = new NpgsqlCommand(
                 "SELECT COUNT(*) FROM tradings WHERE ownerId = @OwnerId AND cardId = @CardId",
-                _connection);
+                connection);
             command.Parameters.AddWithValue("@OwnerId", ownerId);
             command.Parameters.AddWithValue("@CardId", cardId);
             var result = command.ExecuteScalar();
@@ -222,9 +229,10 @@ namespace MTCG.Test
         [Test]
         public void CreateOffer_CardNotInUsersDeck_SuccessfullyCreatesOffer()
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             // Arrange
@@ -254,9 +262,10 @@ namespace MTCG.Test
         [Test]
         public void ExecuteTrade_TradeWithOneself_ShouldFail()
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             // Arrange
@@ -277,9 +286,10 @@ namespace MTCG.Test
         [Test]
         public void ExecuteTrade_ValidTradeConditions_ShouldBeSuccessful()
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             // Arrange
@@ -311,9 +321,10 @@ namespace MTCG.Test
         [Test]
         public void ExecuteTrade_InvalidTradeConditions_ShouldFail()
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             // Arrange
@@ -345,9 +356,10 @@ namespace MTCG.Test
         [Test]
         public void ExecuteTrade_CardInUsersDeck_ShouldFail()
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
             // Arrange
@@ -387,12 +399,13 @@ namespace MTCG.Test
 
         private void DeleteTestData(string tableName)
         {
-            if (_connection.State != ConnectionState.Open)
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                _connection.Open();
+                connection.Open();
             }
 
-            using var command = new NpgsqlCommand($"DELETE FROM {tableName}", _connection);
+            using var command = new NpgsqlCommand($"DELETE FROM {tableName}", connection);
             command.ExecuteNonQuery();
         }
 

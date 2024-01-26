@@ -52,7 +52,7 @@ namespace MTCG.Data.Repositories
 
             var query = $"INSERT INTO {_table} ({_fields}) VALUES (@UserId, @Name, @Bio, @Image);";
             using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
-            command.Parameters.AddWithValue("@UserId", userProfile.UserId);
+            command.Parameters.AddWithValue("@UserId", userProfile.UserId!);
             command.Parameters.AddWithValue("@Name", userProfile.Name ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@Bio", userProfile.Bio ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@Image", userProfile.Image ?? (object)DBNull.Value);
@@ -83,7 +83,7 @@ namespace MTCG.Data.Repositories
                 command.Parameters.AddWithValue("@Name", updatedProfile.Name ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@Bio", updatedProfile.Bio ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@Image", updatedProfile.Image ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@UserId", userId);
+                command.Parameters.AddWithValue("@UserId", userId!);
 
                 command.ExecuteNonQuery();
             }
