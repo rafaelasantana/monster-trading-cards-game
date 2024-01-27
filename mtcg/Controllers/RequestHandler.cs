@@ -747,7 +747,7 @@ namespace MTCG.Controllers
                 else if (battleResult.Status == BattleStatus.Completed)
                 {
                     string resultMessage = $"Battle completed. Winner ID: {battleResult.WinnerId}.";
-                    if (battleResult.WinnerId == 0) // Assuming 0 indicates a draw or no winner
+                    if (battleResult.WinnerId == null) // no winner, it was a draw
                     {
                         resultMessage = "The battle ended in a draw.";
                     }
@@ -831,7 +831,7 @@ namespace MTCG.Controllers
         private void SendFormattedJSONResponse(object data, HttpStatusCode statusCode)
         {
             string jsonResponse = JsonConvert.SerializeObject(data, Formatting.Indented);
-            byte[] responseBytes = System.Text.Encoding.UTF8.GetBytes(jsonResponse);
+            byte[] responseBytes = Encoding.UTF8.GetBytes(jsonResponse);
 
             _context.Response.ContentType = "application/json";
             _context.Response.StatusCode = (int)statusCode;

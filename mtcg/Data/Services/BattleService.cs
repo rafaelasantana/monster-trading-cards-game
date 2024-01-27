@@ -40,8 +40,8 @@ namespace MTCG.Data.Services
             }
 
             // Validate the player's deck
-            var playerDeck = _deckRepository.GetDeckByUserId(playerId);
-            if (playerDeck == null || !playerDeck.Any())
+            List<Card> playerDeck = _deckRepository.GetDeckByUserId(playerId);
+            if (playerDeck == null || !playerDeck.Any() || playerDeck.Count != 4)
                 throw new InvalidOperationException("Player does not have a valid deck.");
 
             lock (_battleRequestLock)
@@ -65,14 +65,13 @@ namespace MTCG.Data.Services
             }
         }
 
-
         /// <summary>
         /// Conducts the battle and returns the result
         /// </summary>
         /// <param name="battleId"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        private BattleResult ConductBattle(int? battleId)
+        internal BattleResult ConductBattle(int? battleId)
         {
             // Retrieve battle details
             Battle? battle = _battleRepository.GetBattleById(battleId);
@@ -132,7 +131,7 @@ namespace MTCG.Data.Services
                 // Add round details to summary
                 battleResult.Summary += roundResult.Details;
             }
-            // Update battle result if it was a draw (100 rounds)
+            // Handle battle draw: there's no winner, add details to summary
             if (battleIsOngoing)
             {
                 // set winner id as null
@@ -140,12 +139,12 @@ namespace MTCG.Data.Services
                 // add result to the summary
                 battleResult.Summary += "\n *** BATTLE IS OVER *** \n\n Maximum rounds achieved: it's a TIE!\n";
             }
-
+            // Update battle outcome and player stats
             if (battleId.HasValue && battle.Player1Id.HasValue && battle.Player2Id.HasValue)
             {
                 // Update battle record
                 _battleRepository.UpdateBattleOutcome(battleId.Value, battleResult.WinnerId);
-                // Calculate elo ratings and update user stats
+                // Calculate elo ratings and update player stats
                 UpdatePlayerStats(battle.Player1Id.Value, battle.Player2Id.Value, battleResult.WinnerId);
                 battleResult.PrintBattleResult();
                 return battleResult;
@@ -438,7 +437,6 @@ namespace MTCG.Data.Services
             _userStatsRepository.UpdateStats(player1Stats);
             _userStatsRepository.UpdateStats(player2Stats);
         }
-
     }
 
 }

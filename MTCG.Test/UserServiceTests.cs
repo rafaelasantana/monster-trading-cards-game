@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using MTCG.Data.Models;
 using MTCG.Data.Repositories;
 using MTCG.Data.Services;
@@ -7,7 +6,7 @@ using System.Data;
 
 namespace MTCG.Test
 {
-    public class UserTests
+    public class UserServiceTests
     {
         private DbConnectionManager _dBConnectionManager;
         private UserRepository _userRepository;
@@ -70,7 +69,6 @@ namespace MTCG.Test
 
             return null;
         }
-
 
         /// <summary>
         /// Updates an existing user on the database
@@ -140,6 +138,9 @@ namespace MTCG.Test
             Assert.That(ex.Message, Is.EqualTo("Invalid username or password."));
         }
 
+        /// <summary>
+        /// Registers a new user, should create user profile and user stats
+        /// </summary>
         [Test]
         public void RegisterUser_WithNewUser_ShouldCreateUserAndRelatedData()
         {
@@ -243,21 +244,16 @@ namespace MTCG.Test
         [TearDown]
         public void Cleanup()
         {
-            // Cleanup all test users and related data
-            DeleteTestData("userprofiles");
-            DeleteTestData("userstats");
-            DeleteTestData("users");
+            // Call your clear_all_tables function here
+            ClearAllTables();
         }
 
-        private void DeleteTestData(string tableName)
+        private void ClearAllTables()
         {
             using var connection = _dBConnectionManager.GetConnection();
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
+            connection.Open();
 
-            using var command = new NpgsqlCommand($"DELETE FROM {tableName}", connection);
+            using var command = new NpgsqlCommand("SELECT clear_all_tables()", connection);
             command.ExecuteNonQuery();
         }
 

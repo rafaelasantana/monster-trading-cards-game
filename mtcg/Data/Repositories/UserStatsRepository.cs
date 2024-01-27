@@ -100,7 +100,7 @@ namespace MTCG.Data.Repositories
                 connection.Open();
             }
 
-            var query = "SELECT username, elorating FROM scoreboard;";
+            var query = "SELECT username, elorating, wins, losses FROM scoreboard;";
             using var command = new NpgsqlCommand(query, connection as NpgsqlConnection);
 
             var scoreboards = new List<Scoreboard>();

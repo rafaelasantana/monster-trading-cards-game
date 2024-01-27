@@ -21,30 +21,21 @@ namespace MTCG.Data.Models
             Rounds = new List<RoundResult>();
         }
 
+        /// <summary>
+        /// Adds a round result to the list of rounds in this battle
+        /// </summary>
+        /// <param name="roundResult"></param>
         public void LogRound(RoundResult roundResult)
         {
             Rounds.Add(roundResult);
         }
 
+        /// <summary>
+        /// Prints the results of this battle to the console
+        /// </summary>
         public void PrintBattleResult()
         {
-        //             public int? BattleId { get; set; }
-        // public BattleStatus Status { get; set; }
-        // public int? WinnerId { get; set; }
-        // public int? LoserId { get; set; }
-        // public List<RoundResult> Rounds { get; private set; }
-        // public string? Summary { get; set; }
-            Console.WriteLine($"BattleId: {BattleId}");
-            Console.WriteLine($"Status: {Status}");
-            Console.WriteLine($"WinnerId: {WinnerId}");
-            Console.WriteLine($"LoserId: {LoserId}");
-            Console.WriteLine("Rounds:");
-            foreach (var round in Rounds)
-            {
-                round.PrintRoundResult();
-            }
-
-            Console.WriteLine($"Summary: {Summary}");
+            Console.WriteLine($"{Summary}");
         }
     }
 }

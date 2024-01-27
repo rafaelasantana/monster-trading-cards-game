@@ -36,7 +36,6 @@ namespace MTCG.Test
             CreateTestCard("testCardNotInDeck2", 200, testUserId2, false, "Monster"); // Not in deck, for other user
         }
 
-
         /// <summary>
         /// Helper method to create a card
         /// </summary>
@@ -75,7 +74,6 @@ namespace MTCG.Test
             }
         }
 
-
         /// <summary>
         /// Helper method to create a trading offer
         /// </summary>
@@ -106,7 +104,6 @@ namespace MTCG.Test
             return tradingId;
         }
 
-
         /// <summary>
         /// Helper method to create an user
         /// </summary>
@@ -127,39 +124,6 @@ namespace MTCG.Test
             command.Parameters.AddWithValue("@Username", username);
             command.Parameters.AddWithValue("@Password", password);
             return (int?)command.ExecuteScalar() ?? 0;
-        }
-
-
-        /// <summary>
-        /// Tries to create a trading with a card that is in the user's deck, should throw exception
-        /// </summary>
-        [Test]
-        public void CreateOffer_CardInUsersDeck_ShouldNotCreateOfferAndThrowException()
-        {
-            using var connection = _dBConnectionManager.GetConnection();
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
-            // Arrange
-            var testUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
-            var testCardId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'testCardInDeck1'");
-
-            var offer = new TradingOffer
-            {
-                OwnerId = testUserId,
-                CardId = testCardId,
-                RequestedType = "spell",
-                MinDamage = 50
-            };
-
-            // Act & Assert
-            var ex = Assert.Throws<InvalidOperationException>(() => _tradingRepository.CreateOffer(offer));
-            Assert.That(ex.Message, Is.EqualTo("The card is in the user's deck."));
-
-            // Assert that no new offer was created in the database
-            var offerExists = CheckIfOfferExists(testUserId, testCardId);
-            Assert.That(offerExists, Is.False);
         }
 
         /// <summary>
@@ -222,6 +186,37 @@ namespace MTCG.Test
             return result != null && (long)result > 0;
         }
 
+        /// <summary>
+        /// Tries to create a trading with a card that is in the user's deck, should throw exception
+        /// </summary>
+        [Test]
+        public void CreateOffer_CardInUsersDeck_ShouldNotCreateOfferAndThrowException()
+        {
+            using var connection = _dBConnectionManager.GetConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                connection.Open();
+            }
+            // Arrange
+            var testUserId = GetScalarValue<int>("SELECT id FROM users WHERE username = 'testUser1'");
+            var testCardId = GetScalarValue<string>("SELECT id FROM cards WHERE name = 'testCardInDeck1'");
+
+            var offer = new TradingOffer
+            {
+                OwnerId = testUserId,
+                CardId = testCardId,
+                RequestedType = "spell",
+                MinDamage = 50
+            };
+
+            // Act & Assert
+            var ex = Assert.Throws<InvalidOperationException>(() => _tradingRepository.CreateOffer(offer));
+            Assert.That(ex.Message, Is.EqualTo("The card is in the user's deck."));
+
+            // Assert that no new offer was created in the database
+            var offerExists = CheckIfOfferExists(testUserId, testCardId);
+            Assert.That(offerExists, Is.False);
+        }
 
         /// <summary>
         /// Successfully creates an offer
@@ -278,7 +273,6 @@ namespace MTCG.Test
             var ex = Assert.Throws<InvalidOperationException>(() => _tradingRepository.ExecuteTrade(tradingId, testUserId, testCardId));
             Assert.That(ex.Message, Is.EqualTo("Trading with oneself is not allowed."));
         }
-
 
         /// <summary>
         /// Executes a trade meeting all requirements
@@ -384,31 +378,24 @@ namespace MTCG.Test
             }
         }
 
-
         /// <summary>
         /// Deletes test data
         /// </summary>
         [TearDown]
         public void Cleanup()
         {
-            DeleteTestData("tradings");
-            DeleteTestData("deckCards");
-            DeleteTestData("cards");
-            DeleteTestData("users");
+            // Call your clear_all_tables function here
+            ClearAllTables();
         }
 
-        private void DeleteTestData(string tableName)
+        private void ClearAllTables()
         {
             using var connection = _dBConnectionManager.GetConnection();
-            if (connection.State != ConnectionState.Open)
-            {
-                connection.Open();
-            }
+            connection.Open();
 
-            using var command = new NpgsqlCommand($"DELETE FROM {tableName}", connection);
+            using var command = new NpgsqlCommand("SELECT clear_all_tables()", connection);
             command.ExecuteNonQuery();
         }
-
 
     }
 }
