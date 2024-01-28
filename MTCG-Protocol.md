@@ -13,7 +13,8 @@ This application follows a layered architecture, separating concerns into contro
 **Responsibility Segregation** 
 Each component has a clearly defined responsibility, whether it's handling HTTP requests, managing business logic, or interacting with the database.
 
-![[Pasted image 20240128120355.png]]
+![[<img width="765" alt="architecture-overview" src="https://github.com/rafaelasantana/monster-trading-cards-game/assets/60327926/f4bbf4e2-efcf-4ae6-81e8-b20918d50acb">
+]]
 
 #### Program
 
@@ -132,7 +133,8 @@ Each component has a clearly defined responsibility, whether it's handling HTTP 
 		- uses password hashing for security.
 #### Database Design
 
-![[Pasted image 20240126152023.png]]
+![[<img width="631" alt="database-overview" src="https://github.com/rafaelasantana/monster-trading-cards-game/assets/60327926/61b13bbd-86c4-491b-ad6e-49393c66821c">
+]]
 
 ### Development Process
 
