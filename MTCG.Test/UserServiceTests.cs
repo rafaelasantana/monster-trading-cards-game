@@ -56,18 +56,14 @@ namespace MTCG.Test
             command.Parameters.AddWithValue("@Username", username);
 
             using var reader = command.ExecuteReader();
+            User? user = null;
+
             if (reader.Read())
             {
-                return new User
-                {
-                    Id = reader.GetInt32(reader.GetOrdinal("id")),
-                    Username = reader.GetString(reader.GetOrdinal("username")),
-                    Password = reader.GetString(reader.GetOrdinal("password")),
-                    Coins = reader.GetInt32(reader.GetOrdinal("coins")),
-                };
+                user = DataMapperService.MapToObject<User>(reader);
             }
 
-            return null;
+            return user;
         }
 
         /// <summary>
@@ -244,7 +240,6 @@ namespace MTCG.Test
         [TearDown]
         public void Cleanup()
         {
-            // Call your clear_all_tables function here
             ClearAllTables();
         }
 

@@ -296,8 +296,5 @@ namespace MTCG.Test
             using var command = new NpgsqlCommand("SELECT clear_all_tables()", connection);
             command.ExecuteNonQuery();
         }
-
-
-
     }
 }
