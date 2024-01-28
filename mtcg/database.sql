@@ -170,8 +170,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT clear_all_tables();
-
 CREATE OR REPLACE FUNCTION delete_all_tables()
 RETURNS void AS $$
 BEGIN
@@ -192,5 +190,3 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
-
-SELECT delete_all_tables();
