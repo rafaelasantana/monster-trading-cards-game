@@ -1,6 +1,6 @@
-# MTCG README
+# MTCG
 
-Welcome to the README for my Monster Trading Cards Game! This document provides instructions on how to set up and run the project. Please follow the steps below to get started.
+Welcome to my Monster Trading Cards Game! This document provides instructions on how to set up and run the project. Please follow the steps below to get started.
 
 ## Setting Up the Database
 
